@@ -13,19 +13,30 @@ class Pollutant(Enum):
     PM2_5 = auto()
 
 class EOEmissionCalculator(ABC):
+    TOTAL_EMISSIONS_KEY = "totals"
+    GRIDDED_EMISSIONS_KEY = "grid"
     
     def __init__(self):
         super().__init__()
     
     @abstractmethod
-    def run(self, area, timespan, Pollutant):
-        pass
+    def supports(self, pollutant: Pollutant) -> bool:
+        """
+        Check for the calculation method's applicability to given pollutant.
 
-class DummyEOEmissionCalculator(EOEmissionCalculator):
+        Parameters
+        ----------
+        pollutant: Pollutant
+            Pollutant to check.
+
+        Returns
+        -------
+        If this method support estimation of given pollutant.
+
+        """
+        pass
     
-    def __init__(self):
-        super().__init__()
-    
-    def run(self, area=None, timespan=None, Pollutant=None):
-        return 42
+    @abstractmethod
+    def run(self, area, timespan, pollutant: Pollutant) -> dict:
+        pass
     

@@ -3,16 +3,15 @@
 Dummy emission calculator
 """
 
-from .base import EOEmissionCalculator
+from .base import EOEmissionCalculator, Pollutant
 
 class DummyEOEmissionCalculator(EOEmissionCalculator):
     
     def __init__(self):
         super().__init__()
         
-    def supports():
+    def supports(self, pollutant: Pollutant) -> bool:
         return True
     
-    def run(self):
+    def run(self, area, timespan, pollutant: Pollutant) -> dict:
         return 42
-    
