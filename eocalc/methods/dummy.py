@@ -3,7 +3,8 @@
 Dummy emission calculator
 """
 
-from .base import EOEmissionCalculator, Pollutant
+from eocalc.context import Pollutant
+from eocalc.methods.base import EOEmissionCalculator
 
 class DummyEOEmissionCalculator(EOEmissionCalculator):
     
@@ -13,5 +14,5 @@ class DummyEOEmissionCalculator(EOEmissionCalculator):
     def supports(self, pollutant: Pollutant) -> bool:
         return True
     
-    def run(self, area, timespan, pollutant: Pollutant) -> dict:
+    def run(self, area = None, timespan = None, pollutant: Pollutant = None) -> dict:
         return 42

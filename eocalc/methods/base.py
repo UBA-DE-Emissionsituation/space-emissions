@@ -3,14 +3,8 @@
 Space emission calculator base classes and definitions
 """
 
-from enum import Enum, auto
 from abc import ABC, abstractmethod
-
-class Pollutant(Enum):
-    NOx = auto()
-    SO2 = auto()
-    NH3 = auto()
-    PM2_5 = auto()
+from eocalc.context import Pollutant
 
 class EOEmissionCalculator(ABC):
     TOTAL_EMISSIONS_KEY = "totals"
