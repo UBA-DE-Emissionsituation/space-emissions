@@ -4,7 +4,7 @@ import unittest
 from eocalc.context import Pollutant
 from eocalc.methods.dummy import DummyEOEmissionCalculator
 
-class TestStringMethods(unittest.TestCase):
+class TestDummyMethods(unittest.TestCase):
 
     def test_supports(self):
         for p in Pollutant:
