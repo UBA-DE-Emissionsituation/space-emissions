@@ -13,6 +13,32 @@ class EOEmissionCalculator(ABC):
     def __init__(self):
         super().__init__()
     
+    @property
+    @abstractmethod
+    def minimum_area_size(self) -> int:
+        """
+        This minimum region size this method can reliably work on.
+
+        Returns
+        -------
+        Minimum region size in km² (square kilometers).
+
+        """
+        pass
+    
+    @property
+    @abstractmethod
+    def minimum_period_length(self) -> int:
+        """
+        The minimum time span this method can reliably work on.
+
+        Returns
+        -------
+        Minimum period in number of days.
+
+        """
+        pass
+    
     @abstractmethod
     def supports(self, pollutant: Pollutant) -> bool:
         """
@@ -31,6 +57,24 @@ class EOEmissionCalculator(ABC):
         pass
     
     @abstractmethod
-    def run(self, area, timespan, pollutant: Pollutant) -> dict:
+    def run(self, area, period, pollutant: Pollutant) -> dict:
+        """
+        Run method for given input and return the derived emission values. 
+
+        Parameters
+        ----------
+        area : TYPE (TODO)
+            Area to calculate emissions for.
+        period : TYPE (TODO)
+            Time span to cover.
+        pollutant : Pollutant
+            Air pollutant to calculate emissions for.
+
+        Returns
+        -------
+        dict
+            The emission values, both as total numbers and as a grid.
+
+        """
         pass
     

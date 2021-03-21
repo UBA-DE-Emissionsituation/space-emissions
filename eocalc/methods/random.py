@@ -13,10 +13,18 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
     def __init__(self):
         super().__init__()
         
+    def minimum_area_size(self) -> int:
+        return 0
+    
+    def minimum_period_length(self) -> int:
+        return 0
+    
     def supports(self, pollutant: Pollutant) -> bool:
         return True
     
-    def run(self, area, timespan, pollutant: Pollutant) -> dict:
+    def run(self, area, period, pollutant: Pollutant) -> dict:
+        assert(self.supports(pollutant))
+        
         results = {}
         
         # Generate data frame with random emission values per GNFR sector
