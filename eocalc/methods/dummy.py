@@ -20,5 +20,5 @@ class DummyEOEmissionCalculator(EOEmissionCalculator):
     def supports(self, pollutant: Pollutant) -> bool:
         return True
     
-    def run(self, area = None, period = None, pollutant: Pollutant = None) -> dict:
+    def run(self, area = None, period = None, pollutant = None) -> dict:
         return 42

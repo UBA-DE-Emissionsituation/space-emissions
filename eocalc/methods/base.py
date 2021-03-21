@@ -4,9 +4,13 @@ Space emission calculator base classes and definitions
 """
 
 from abc import ABC, abstractmethod
+
+import pandas
+
 from eocalc.context import Pollutant
 
 class EOEmissionCalculator(ABC):
+    
     TOTAL_EMISSIONS_KEY = "totals"
     GRIDDED_EMISSIONS_KEY = "grid"
     
@@ -57,7 +61,7 @@ class EOEmissionCalculator(ABC):
         pass
     
     @abstractmethod
-    def run(self, area, period, pollutant: Pollutant) -> dict:
+    def run(self, area, period: pandas.DatetimeIndex, pollutant: Pollutant) -> dict:
         """
         Run method for given input and return the derived emission values. 
 
@@ -65,8 +69,8 @@ class EOEmissionCalculator(ABC):
         ----------
         area : TYPE (TODO)
             Area to calculate emissions for.
-        period : TYPE (TODO)
-            Time span to cover.
+        period : pandas.DatetimeIndex
+            Time span to cover. Use pandas.date_range to create.
         pollutant : Pollutant
             Air pollutant to calculate emissions for.
 

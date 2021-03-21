@@ -3,6 +3,8 @@
 Random emission calculator
 """
 import random
+
+import pandas
 from pandas import DataFrame
 
 from eocalc.context import Pollutant, GNFR
@@ -22,8 +24,9 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
     def supports(self, pollutant: Pollutant) -> bool:
         return True
     
-    def run(self, area, period, pollutant: Pollutant) -> dict:
+    def run(self, area, period: pandas.DatetimeIndex, pollutant: Pollutant) -> dict:
         assert(self.supports(pollutant))
+        assert(len(period) >= self.minimum_period_length())
         
         results = {}
         
