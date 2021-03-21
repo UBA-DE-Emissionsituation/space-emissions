@@ -3,12 +3,21 @@
 from enum import Enum, auto
 
 class Pollutant(Enum):
+    """
+    Defines list of air pollutants to be consideres in this project.    
+    """
+    
     NOx = auto()
     SO2 = auto()
     NH3 = auto()
     PM2_5 = auto()
 
 class GNFR(Enum):
+    """
+    Defines complete list of GNFR sectors, as defined in the context of
+    the UNECE/LRTAP convention and the relevant guidelines.
+    """
+    
     A_PublicPower = auto()
     B_IndustrialComb = auto()
     C_SmallComb = auto()

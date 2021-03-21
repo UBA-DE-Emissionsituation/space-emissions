@@ -11,7 +11,9 @@ from eocalc.context import Pollutant
 
 class EOEmissionCalculator(ABC):
     
+    # Key to use for the total emission breakdown in result dict
     TOTAL_EMISSIONS_KEY = "totals"
+    # Key to use for the spatial gridded emissions in result dict
     GRIDDED_EMISSIONS_KEY = "grid"
     
     def __init__(self):
@@ -21,7 +23,7 @@ class EOEmissionCalculator(ABC):
     @abstractmethod
     def minimum_area_size(self) -> int:
         """
-        This minimum region size this method can reliably work on.
+        The minimum region size this method can reliably work on.
 
         Returns
         -------
