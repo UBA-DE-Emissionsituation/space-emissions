@@ -8,33 +8,36 @@ from pandas import DataFrame
 
 from eocalc.context import Pollutant, GNFR
 from eocalc.methods.base import DateRange
-from eocalc.methods.base import EOEmissionCalculator
+from eocalc.methods.base import Status, EOEmissionCalculator
 
 
 class RandomEOEmissionCalculator(EOEmissionCalculator):
+    """Implement the emission calculator returning random non-sense."""
 
     def __init__(self):
         super().__init__()
 
-    def minimum_area_size(self) -> int:
+    def minimum_area_size() -> int:
         return 0
 
-    def minimum_period_length(self) -> int:
+    def minimum_period_length() -> int:
         return 0
 
-    def earliest_start_date(self) -> date:
+    def earliest_start_date() -> date:
         return date.fromisoformat('0001-01-01')
 
-    def latest_end_date(self) -> date:
+    def latest_end_date() -> date:
         return date.fromisoformat('9999-12-31')
 
-    def supports(self, pollutant: Pollutant) -> bool:
+    def supports(pollutant: Pollutant) -> bool:
         return True
 
     def run(self, area, period: DateRange, pollutant: Pollutant) -> dict:
-        assert(self.supports(pollutant))
-        assert((period.end-period.start).days >= self.minimum_period_length())
+        assert(self.__class__.supports(pollutant))
+        assert((period.end-period.start).days >=
+               self.__class__.minimum_period_length())
 
+        self._state = Status.RUNNING
         results = {}
 
         # Generate data frame with random emission values per GNFR sector
@@ -48,4 +51,5 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
         results[EOEmissionCalculator.TOTAL_EMISSIONS_KEY] = data
         results[EOEmissionCalculator.GRIDDED_EMISSIONS_KEY] = 'white noise.png'
 
+        self._state = Status.READY
         return results

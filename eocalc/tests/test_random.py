@@ -9,14 +9,14 @@ from eocalc.methods.random import RandomEOEmissionCalculator
 class TestRandomMethods(unittest.TestCase):
 
     def test_minimum_area(self):
-        self.assertEqual(0, RandomEOEmissionCalculator().minimum_area_size())
+        self.assertEqual(0, RandomEOEmissionCalculator.minimum_area_size())
 
     def test_minimum_period(self):
-        self.assertEqual(0, RandomEOEmissionCalculator().minimum_period_length())
+        self.assertEqual(0, RandomEOEmissionCalculator.minimum_period_length())
 
     def test_supports(self):
         for p in Pollutant:
-            self.assertTrue(RandomEOEmissionCalculator().supports(p))
+            self.assertTrue(RandomEOEmissionCalculator.supports(p))
 
     def test_run(self):
         period = DateRange('2025-01-01', '2025-12-31')

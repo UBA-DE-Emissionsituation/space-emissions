@@ -2,11 +2,19 @@
 """Space emission calculator base classes and definitions."""
 
 from abc import ABC, abstractmethod
+from enum import Enum, auto
 from datetime import date
 
 # from shapely.geometry import MultiPolygon
 
 from eocalc.context import Pollutant
+
+
+class Status(Enum):
+    """Represent state of calculator."""
+
+    READY = auto()
+    RUNNING = auto()
 
 
 class DateRange:
@@ -18,6 +26,7 @@ class DateRange:
 
 
 class EOEmissionCalculator(ABC):
+    """Base class for all emission calculation methods to implement."""
 
     # Key to use for the total emission breakdown in result dict
     TOTAL_EMISSIONS_KEY = "totals"
@@ -26,36 +35,66 @@ class EOEmissionCalculator(ABC):
 
     def __init__(self):
         super().__init__()
+        self._state = Status.READY
+        self._progress = 0
 
     @property
-    @abstractmethod
-    def minimum_area_size(self) -> int:
+    def state(self) -> Status:
         """
-        The minimum region size this method can reliably work on.
+        Check on the status of the calculator.
 
         Returns
         -------
-        Minimum region size in km² (square kilometers).
+        Status
+            Current state of the calculation method.
+
+        """
+        return self._state
+
+    @property
+    def progress(self) -> int:
+        """
+        Check on the progress of the calculator after calling run().
+
+        Returns
+        -------
+        int
+            Progress in percent.
+
+        """
+        return self._progress
+
+    @staticmethod
+    @abstractmethod
+    def minimum_area_size() -> int:
+        """
+        Check minimum region size this method can reliably work on.
+
+        Returns
+        -------
+        int
+            Minimum region size in km² (square kilometers).
 
         """
         pass
 
-    @property
+    @staticmethod
     @abstractmethod
-    def minimum_period_length(self) -> int:
+    def minimum_period_length() -> int:
         """
-        The minimum time span this method can reliably work on.
+        Check minimum time span this method can reliably work on.
 
         Returns
         -------
-        Minimum period in number of days.
+        int
+            Minimum period in number of days.
 
         """
         pass
 
-    @property
+    @staticmethod
     @abstractmethod
-    def earliest_start_date(self) -> date:
+    def earliest_start_date() -> date:
         """
         Check if the method can be used for given period.
 
@@ -67,9 +106,9 @@ class EOEmissionCalculator(ABC):
         """
         pass
 
-    @property
+    @staticmethod
     @abstractmethod
-    def latest_end_date(self) -> date:
+    def latest_end_date() -> date:
         """
         Check if the method can be used for given period.
 
@@ -81,8 +120,9 @@ class EOEmissionCalculator(ABC):
         """
         pass
 
+    @staticmethod
     @abstractmethod
-    def supports(self, pollutant: Pollutant) -> bool:
+    def supports(pollutant: Pollutant) -> bool:
         """
         Check for the calculation method's applicability to given pollutant.
 
@@ -93,7 +133,8 @@ class EOEmissionCalculator(ABC):
 
         Returns
         -------
-        If this method support estimation of given pollutant.
+        bool
+            If this method support estimation of given pollutant.
 
         """
         pass
