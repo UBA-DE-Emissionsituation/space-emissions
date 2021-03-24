@@ -9,10 +9,10 @@ from eocalc.methods.random import RandomEOEmissionCalculator
 class TestRandomMethods(unittest.TestCase):
 
     def test_minimum_area(self):
-        self.assertEqual(0, RandomEOEmissionCalculator.minimum_area_size())
+        self.assertEqual(1, RandomEOEmissionCalculator.minimum_area_size())
 
     def test_minimum_period(self):
-        self.assertEqual(0, RandomEOEmissionCalculator.minimum_period_length())
+        self.assertEqual(1, RandomEOEmissionCalculator.minimum_period_length())
 
     def test_supports(self):
         for p in Pollutant:
@@ -24,6 +24,8 @@ class TestRandomMethods(unittest.TestCase):
             results = RandomEOEmissionCalculator().run(None, period, p)
             self.assertIsNotNone(results[RandomEOEmissionCalculator.TOTAL_EMISSIONS_KEY])
             self.assertIsNotNone(results[RandomEOEmissionCalculator.GRIDDED_EMISSIONS_KEY])
+        with self.assertRaises(AssertionError):
+            RandomEOEmissionCalculator().run(None, period, None)
 
 
 if __name__ == '__main__':

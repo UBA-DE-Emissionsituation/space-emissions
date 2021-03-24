@@ -3,7 +3,7 @@
 
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from datetime import date
+from datetime import date, timedelta
 
 # from shapely.geometry import MultiPolygon
 
@@ -20,9 +20,11 @@ class Status(Enum):
 class DateRange:
     """Represent a time span between two dates."""
 
-    def __init__(self, start, end):
+    def __init__(self, start: str, end: str):
         self.start = date.fromisoformat(start)
-        self.end = date.fromisoformat(end)
+        self.end = date.fromisoformat(end) + timedelta(days=1)
+
+        assert self.end > self.start, "Invalid date range!"
 
 
 class EOEmissionCalculator(ABC):
@@ -35,6 +37,7 @@ class EOEmissionCalculator(ABC):
 
     def __init__(self):
         super().__init__()
+
         self._state = Status.READY
         self._progress = 0
 

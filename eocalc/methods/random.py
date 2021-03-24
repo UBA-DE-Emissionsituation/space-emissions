@@ -18,10 +18,10 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
         super().__init__()
 
     def minimum_area_size() -> int:
-        return 0
+        return 1
 
     def minimum_period_length() -> int:
-        return 0
+        return 1
 
     def earliest_start_date() -> date:
         return date.fromisoformat('0001-01-01')
@@ -30,12 +30,13 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
         return date.fromisoformat('9999-12-31')
 
     def supports(pollutant: Pollutant) -> bool:
-        return True
+        return pollutant is not None
 
     def run(self, area, period: DateRange, pollutant: Pollutant) -> dict:
-        assert(self.__class__.supports(pollutant))
-        assert((period.end-period.start).days >=
-               self.__class__.minimum_period_length())
+        assert self.__class__.supports(pollutant), f"Pollutant {pollutant} not supported!"
+        assert (period.end-period.start).days >= self.__class__.minimum_period_length(), "Time span too short!"
+        assert period.start >= self.__class__.earliest_start_date(), f"Method cannot be used for period starting on {period.start}!"
+        assert period.end <= self.__class__.latest_end_date(), f"Method cannot be used for period ending on {period.end}!"
 
         self._state = Status.RUNNING
         results = {}

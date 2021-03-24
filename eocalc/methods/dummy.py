@@ -21,13 +21,13 @@ class DummyEOEmissionCalculator(EOEmissionCalculator):
         return 0
 
     def earliest_start_date() -> date:
-        return date.fromisoformat('0001-01-01')
+        return date.fromisoformat("0001-01-01")
 
     def latest_end_date() -> date:
-        return date.fromisoformat('9999-12-31')
+        return date.fromisoformat("9999-12-31")
 
     def supports(pollutant: Pollutant) -> bool:
-        return True
+        return pollutant is not None
 
     def run(self, area=None, period=None, pollutant=None) -> dict:
         self._state = Status.RUNNING
