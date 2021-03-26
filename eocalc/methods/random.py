@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 """Random emission calculator."""
 
-from datetime import date
 import random
+from datetime import date
 
 from pandas import DataFrame
-#from geopandas import GeoDataFrame
+
+import pyproj
+import shapely
 from shapely.geometry import MultiPolygon
+# from geopandas import GeoDataFrame
 
 from eocalc.context import Pollutant, GNFR
 from eocalc.methods.base import DateRange
@@ -34,11 +37,14 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
     def supports(pollutant: Pollutant) -> bool:
         return pollutant is not None
 
-    def run(self, area: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
+    def run(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
         assert self.__class__.supports(pollutant), f"Pollutant {pollutant} not supported!"
         assert (period.end-period.start).days >= self.__class__.minimum_period_length(), "Time span too short!"
         assert period.start >= self.__class__.earliest_start_date(), f"Method cannot be used for period starting on {period.start}!"
         assert period.end <= self.__class__.latest_end_date(), f"Method cannot be used for period ending on {period.end}!"
+
+        projection = pyproj.Transformer.from_crs(pyproj.CRS('EPSG:4326'), pyproj.CRS('EPSG:8857'), always_xy=True).transform
+        assert shapely.ops.transform(projection, region).area / 10**6 >= self.__class__.minimum_area_size(), "Region too small!"
 
         self._state = Status.RUNNING
         results = {}
@@ -52,7 +58,7 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
         data.loc["Totals"] = data.sum(axis=0)
 
         results[self.__class__.TOTAL_EMISSIONS_KEY] = data
-        results[self.__class__.GRIDDED_EMISSIONS_KEY] = area
+        results[self.__class__.GRIDDED_EMISSIONS_KEY] = region
 
         self._state = Status.READY
         return results

@@ -143,13 +143,13 @@ class EOEmissionCalculator(ABC):
         pass
 
     @abstractmethod
-    def run(self, area: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
+    def run(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
         """
         Run method for given input and return the derived emission values.
 
         Parameters
         ----------
-        area : MultiPolygon
+        region : MultiPolygon
             Area to calculate emissions for.
         period : DateRange
             Time span to cover.

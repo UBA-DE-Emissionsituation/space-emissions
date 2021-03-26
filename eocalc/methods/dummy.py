@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Dummy emission calculator."""
 
-from datetime import date
 import time
+from datetime import date
 
 from eocalc.context import Pollutant
 from eocalc.methods.base import Status, EOEmissionCalculator
@@ -29,7 +29,7 @@ class DummyEOEmissionCalculator(EOEmissionCalculator):
     def supports(pollutant: Pollutant) -> bool:
         return pollutant is not None
 
-    def run(self, area=None, period=None, pollutant=None) -> dict:
+    def run(self, region=None, period=None, pollutant=None) -> dict:
         self._state = Status.RUNNING
         self._progress = 20
         time.sleep(1)
