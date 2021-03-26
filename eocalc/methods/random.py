@@ -5,6 +5,8 @@ from datetime import date
 import random
 
 from pandas import DataFrame
+#from geopandas import GeoDataFrame
+from shapely.geometry import MultiPolygon
 
 from eocalc.context import Pollutant, GNFR
 from eocalc.methods.base import DateRange
@@ -32,7 +34,7 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
     def supports(pollutant: Pollutant) -> bool:
         return pollutant is not None
 
-    def run(self, area, period: DateRange, pollutant: Pollutant) -> dict:
+    def run(self, area: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
         assert self.__class__.supports(pollutant), f"Pollutant {pollutant} not supported!"
         assert (period.end-period.start).days >= self.__class__.minimum_period_length(), "Time span too short!"
         assert period.start >= self.__class__.earliest_start_date(), f"Method cannot be used for period starting on {period.start}!"
@@ -49,8 +51,8 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
         # Add totals row at the bottom
         data.loc["Totals"] = data.sum(axis=0)
 
-        results[EOEmissionCalculator.TOTAL_EMISSIONS_KEY] = data
-        results[EOEmissionCalculator.GRIDDED_EMISSIONS_KEY] = 'white noise.png'
+        results[self.__class__.TOTAL_EMISSIONS_KEY] = data
+        results[self.__class__.GRIDDED_EMISSIONS_KEY] = area
 
         self._state = Status.READY
         return results

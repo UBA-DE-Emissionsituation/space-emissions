@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from enum import Enum, auto
 from datetime import date, timedelta
 
-# from shapely.geometry import MultiPolygon
+from shapely.geometry import MultiPolygon
 
 from eocalc.context import Pollutant
 
@@ -143,13 +143,13 @@ class EOEmissionCalculator(ABC):
         pass
 
     @abstractmethod
-    def run(self, area, period: DateRange, pollutant: Pollutant) -> dict:
+    def run(self, area: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
         """
         Run method for given input and return the derived emission values.
 
         Parameters
         ----------
-        area : MultiPolygon (TODO)
+        area : MultiPolygon
             Area to calculate emissions for.
         period : DateRange
             Time span to cover.
