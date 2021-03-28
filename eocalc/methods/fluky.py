@@ -7,7 +7,7 @@ from datetime import date
 from pandas import DataFrame
 
 import pyproj
-import shapely
+import shapely.ops
 from shapely.geometry import MultiPolygon
 # from geopandas import GeoDataFrame
 
@@ -22,18 +22,23 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
     def __init__(self):
         super().__init__()
 
+    @staticmethod
     def minimum_area_size() -> int:
         return 1
 
+    @staticmethod
     def minimum_period_length() -> int:
         return 1
 
+    @staticmethod
     def earliest_start_date() -> date:
         return date.fromisoformat('0001-01-01')
 
+    @staticmethod
     def latest_end_date() -> date:
         return date.fromisoformat('9999-12-31')
 
+    @staticmethod
     def supports(pollutant: Pollutant) -> bool:
         return pollutant is not None
 

@@ -5,7 +5,7 @@ from shapely.geometry import shape
 
 from eocalc.context import Pollutant
 from eocalc.methods.base import DateRange
-from eocalc.methods.random import RandomEOEmissionCalculator
+from eocalc.methods.fluky import RandomEOEmissionCalculator
 
 
 class TestRandomMethods(unittest.TestCase):

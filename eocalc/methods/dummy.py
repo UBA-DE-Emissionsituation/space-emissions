@@ -14,18 +14,23 @@ class DummyEOEmissionCalculator(EOEmissionCalculator):
     def __init__(self):
         super().__init__()
 
+    @staticmethod
     def minimum_area_size() -> int:
         return 0
 
+    @staticmethod
     def minimum_period_length() -> int:
         return 0
 
+    @staticmethod
     def earliest_start_date() -> date:
         return date.fromisoformat("0001-01-01")
 
+    @staticmethod
     def latest_end_date() -> date:
         return date.fromisoformat("9999-12-31")
 
+    @staticmethod
     def supports(pollutant: Pollutant) -> bool:
         return pollutant is not None
 

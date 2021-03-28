@@ -3,7 +3,7 @@ import unittest
 
 from eocalc.tests.test_base import TestBaseMethods
 from eocalc.tests.test_dummy import TestDummyMethods
-from eocalc.tests.test_random import TestRandomMethods
+from eocalc.tests.test_fluky import TestRandomMethods
 
 
 def suite():
