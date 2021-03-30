@@ -6,10 +6,10 @@ from datetime import date
 
 from pandas import DataFrame
 
+import geopandas
 import pyproj
 import shapely.ops
 from shapely.geometry import MultiPolygon
-# from geopandas import GeoDataFrame
 
 from eocalc.context import Pollutant, GNFR
 from eocalc.methods.base import DateRange
@@ -62,8 +62,14 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
         # Add totals row at the bottom
         data.loc["Totals"] = data.sum(axis=0)
 
+        # Generate one-line geo data frame
+        geo_data = geopandas.GeoDataFrame({f"{pollutant.name} [kt]": [data.loc["Totals"][0]],
+                                           "Umin [%]": [data.loc["Totals"][1]],
+                                           "Umax [%]": [data.loc["Totals"][2]],
+                                           'geometry': [region]})
+
         results[self.__class__.TOTAL_EMISSIONS_KEY] = data
-        results[self.__class__.GRIDDED_EMISSIONS_KEY] = region
+        results[self.__class__.GRIDDED_EMISSIONS_KEY] = geo_data
 
         self._state = Status.READY
         return results
