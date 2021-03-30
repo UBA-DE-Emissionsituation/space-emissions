@@ -1,0 +1,6 @@
+# Python
+__pycache__/
+*.pyc
+
+# Jupyter notebook backups 
+.ipynb_checkpoints/
