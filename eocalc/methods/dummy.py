@@ -4,6 +4,8 @@
 import time
 from datetime import date
 
+from shapely.geometry import MultiPolygon, shape
+
 from eocalc.context import Pollutant
 from eocalc.methods.base import Status, EOEmissionCalculator
 
@@ -17,6 +19,11 @@ class DummyEOEmissionCalculator(EOEmissionCalculator):
     @staticmethod
     def minimum_area_size() -> int:
         return 0
+
+    @staticmethod
+    def coverage() -> MultiPolygon:
+        return shape({'type': 'MultiPolygon',
+                      'coordinates': [[[[-180., -90.], [180., -90.], [180., 90.], [-180., 90.], [-180., -90.]]]]})
 
     @staticmethod
     def minimum_period_length() -> int:

@@ -9,7 +9,7 @@ from pandas import DataFrame
 import geopandas
 import pyproj
 import shapely.ops
-from shapely.geometry import MultiPolygon
+from shapely.geometry import MultiPolygon, shape
 
 from eocalc.context import Pollutant, GNFR
 from eocalc.methods.base import DateRange
@@ -25,6 +25,11 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
     @staticmethod
     def minimum_area_size() -> int:
         return 1
+
+    @staticmethod
+    def coverage() -> MultiPolygon:
+        return shape({'type': 'MultiPolygon',
+                      'coordinates': [[[[-180., -90.], [180., -90.], [180., 90.], [-180., 90.], [-180., -90.]]]]})
 
     @staticmethod
     def minimum_period_length() -> int:
