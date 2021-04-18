@@ -30,6 +30,10 @@ class TestBaseMethods(unittest.TestCase):
         self.assertTrue(calc.covers(south))
         self.assertFalse(calc.covers(both))
 
+        identical = shape({'type': 'MultiPolygon',
+                      'coordinates': [[[[-180., -90.], [180., -90.], [180., 0.], [-180., 0.], [-180., -90.]]]]})
+        self.assertTrue(calc.covers(identical))
+
 
 class TestEOEmissionCalculator(EOEmissionCalculator):
 
