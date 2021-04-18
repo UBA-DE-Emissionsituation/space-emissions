@@ -11,12 +11,28 @@ from eocalc.methods.base import DateRange, Status, EOEmissionCalculator
 class TestBaseMethods(unittest.TestCase):
 
     def test_date_range(self):
+        with self.assertRaises(TypeError):
+            DateRange()
+        with self.assertRaises(TypeError):
+            DateRange(1, "")
+        with self.assertRaises(ValueError):
+            DateRange(end="alice", start="bob")
+
         year2019 = DateRange("2019-01-01", "2019-12-31")
+        self.assertEqual(year2019, DateRange(end="2019-12-31", start="2019-01-01"))
+        self.assertEqual(365, len(year2019))
+        self.assertEqual(year2019.__str__(), "[2019-01-01 to 2019-12-31, 365 days]")
+
         year2020 = DateRange("2020-01-01", "2020-12-31")
-        self.assertEqual(365, (year2019.end-year2019.start).days)
-        self.assertEqual(366, (year2020.end-year2020.start).days)
-        with self.assertRaises(AssertionError):
-            DateRange("2019-01-01", "2018-12-31")
+        self.assertNotEqual(year2019, year2020)
+        self.assertEqual(366, len(year2020))
+
+        with self.assertRaises(ValueError):
+            DateRange(start="2019-01-01", end="2018-12-31")
+        with self.assertRaises(ValueError):
+            DateRange(start="2019-01-01", end="2019-12-31").end = "2018-12-31"
+        with self.assertRaises(ValueError):
+            DateRange(start="2019-01-01", end="2019-12-31").start = "2020-12-31"
 
     def test_covers(self):
         calc = TestEOEmissionCalculator()
