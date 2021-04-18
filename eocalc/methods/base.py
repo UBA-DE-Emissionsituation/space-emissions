@@ -83,6 +83,37 @@ class EOEmissionCalculator(ABC):
 
     @staticmethod
     @abstractmethod
+    def coverage() -> MultiPolygon:
+        """
+        Get spatial extend the calculation method can cover.
+
+        Returns
+        -------
+        MultiPolygon
+            Representation of the area the method can be applied to.
+        """
+        pass
+
+    @classmethod
+    def covers(cls, region: MultiPolygon) -> bool:
+        """
+        Check for the calculation method's applicability to given region.
+
+        Parameters
+        ----------
+        region: MultiPolygon
+            Area to check.
+
+        Returns
+        -------
+        bool
+            If this method support emission estimation for given area.
+
+        """
+        return cls.coverage().contains(region)
+
+    @staticmethod
+    @abstractmethod
     def minimum_period_length() -> int:
         """
         Check minimum time span this method can reliably work on.
