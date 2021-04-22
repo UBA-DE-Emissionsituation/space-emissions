@@ -46,20 +46,19 @@ class TEMISTropomiMonthlyMeanNOxEmissionCalculator(EOEmissionCalculator):
         grid = self._create_grid(region, bin_width, bin_width, snap=True, include_center_col=True)
 
         cache = {}
-        for day in range((period.end - period.start).days):
-            month = f"{period.start + timedelta(days=day):%Y-%m}"
+        for day in period:
+            month = f"{day:%Y-%m}"
             if month not in cache.keys():
-                cache[month] = self.convert_concentration_to_mass(self.read_temis_data(region, f"data/temis/no2_{period.start + timedelta(days=day):%Y%m}.asc"))
+                cache[month] = self.convert_concentration_to_mass(self.read_temis_data(region, f"data/temis/no2_{day:%Y%m}.asc"))
 
-            grid[f"{period.start + timedelta(days=day)} emissions [kg]"] = cache[month]
+            grid[f"{day} emissions [kg]"] = cache[month]
 
         grid = geopandas.overlay(grid, GeoDataFrame({'geometry': [region]}, crs="EPSG:4326"), how='intersection')
         grid.insert(1, "area [km²]", grid.to_crs(epsg=5243).area / 10 ** 6)
         # TODO Update emission columns by multiplying with area - this works but should be put in better Python
-        for day in range((period.end - period.start).days):
-            grid[f"{period.start + timedelta(days=day)} emissions [kg]"] = \
-                grid[f"{period.start + timedelta(days=day)} emissions [kg]"] * grid["area [km²]"]
-        grid.insert(2, "total emissions [kg]", grid.iloc[:, 2:(period.end - period.start).days + 3].sum(axis=1))
+        for day in period:
+            grid[f"{day} emissions [kg]"] = grid[f"{day} emissions [kg]"] * grid["area [km²]"]
+        grid.insert(2, "total emissions [kg]", grid.iloc[:, 2:len(period) + 3].sum(axis=1))
 
         return {
             EOEmissionCalculator.TOTAL_EMISSIONS_KEY: grid["total emissions [kg]"].sum(),
