@@ -18,13 +18,32 @@ class Status(Enum):
 
 
 class DateRange:
-    """Represent a time span between two dates."""
+    """Represent a time span between two dates. Includes both start and end date."""
 
     def __init__(self, start: str, end: str):
-        self.start = date.fromisoformat(start)
-        self.end = date.fromisoformat(end) + timedelta(days=1)
+        self.start = start
+        self.end = end
 
-        assert self.end > self.start, "Invalid date range!"
+    def __str__(self) -> str:
+        return f"[{self.start} to {self.end}, {len(self)} days]"
+
+    def __eq__(self, other: object) -> bool:
+        return self.__dict__ == other.__dict__ if isinstance(other, self.__class__) else False
+
+    def __ne__(self, other: object) -> bool:
+        return not self.__eq__(other)
+
+    def __len__(self) -> int:
+        return (self.end - self.start).days + 1
+
+    def __iter__(self):
+        yield from [self.start + timedelta(days=count) for count in range(len(self))]
+
+    def __setattr__(self, key, value):
+        super.__setattr__(self, key, date.fromisoformat(value))
+
+        if hasattr(self, "start") and hasattr(self, "end") and self.end < self.start:
+            raise ValueError(f"Invalid date range, end ({self.end}) cannot be before start ({self.start})!")
 
 
 class EOEmissionCalculator(ABC):
