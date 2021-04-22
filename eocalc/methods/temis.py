@@ -3,9 +3,9 @@
 
 from datetime import date, timedelta
 
-from geopandas import GeoDataFrame
 from shapely.geometry import MultiPolygon, shape
 import geopandas
+from geopandas import GeoDataFrame
 
 from eocalc.context import Pollutant
 from eocalc.methods.base import EOEmissionCalculator, DateRange
@@ -15,8 +15,6 @@ values_per_row = 20
 
 
 class TEMISTropomiMonthlyMeanNOxEmissionCalculator(EOEmissionCalculator):
-
-    cache = {}
 
     @staticmethod
     def minimum_area_size() -> int:
@@ -45,30 +43,36 @@ class TEMISTropomiMonthlyMeanNOxEmissionCalculator(EOEmissionCalculator):
 
     def run(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
 
-        grid = self._create_grid(region, 0.125, 0.125, snap=True, include_center_col=True)
+        grid = self._create_grid(region, bin_width, bin_width, snap=True, include_center_col=True)
 
+        cache = {}
         for day in range((period.end - period.start).days):
-            grid[f"{period.start + timedelta(days=day)}"] = self.read_temis_data(region, period.start + timedelta(days=day))
+            month = f"{period.start + timedelta(days=day):%Y-%m}"
+            if month not in cache.keys():
+                cache[month] = self.convert_concentration_to_mass(self.read_temis_data(region, f"data/temis/no2_{period.start + timedelta(days=day):%Y%m}.asc"))
 
-        grid["total"] = grid.sum(axis=1, numeric_only=True)
+            grid[f"{period.start + timedelta(days=day)} emissions [kg]"] = cache[month]
+
         grid = geopandas.overlay(grid, GeoDataFrame({'geometry': [region]}, crs="EPSG:4326"), how='intersection')
-
-        grid.insert(0, "area [km²]", grid.to_crs(epsg=5243).area / 10 ** 6)
+        grid.insert(1, "area [km²]", grid.to_crs(epsg=5243).area / 10 ** 6)
+        # TODO Update emission columns by multiplying with area - this works but should be put in better Python
+        for day in range((period.end - period.start).days):
+            grid[f"{period.start + timedelta(days=day)} emissions [kg]"] = \
+                grid[f"{period.start + timedelta(days=day)} emissions [kg]"] * grid["area [km²]"]
+        grid.insert(2, "total emissions [kg]", grid.iloc[:, 2:(period.end - period.start).days + 3].sum(axis=1))
 
         return {
-            EOEmissionCalculator.TOTAL_EMISSIONS_KEY: grid["total"].sum(),
+            EOEmissionCalculator.TOTAL_EMISSIONS_KEY: grid["total emissions [kg]"].sum(),
             EOEmissionCalculator.GRIDDED_EMISSIONS_KEY: grid
         }
 
-    def read_temis_data(self, region: MultiPolygon, day: date) -> ():
-        month = f"{day:%Y-%m}"
-        if month not in self.cache.keys():
-            self.cache[month] = self.read_temis_data_from_file(region, f"data/temis/no2_{day:%Y%m}.asc")
-
-        return self.cache[month]
+    @staticmethod
+    def convert_concentration_to_mass(concentrations):
+        return [x * 10**13 / (6.022 * 10**23) * 46.01 / 1000 * 10**10 for x in concentrations]
 
     @staticmethod
-    def read_temis_data_from_file(region: MultiPolygon, filename: str) -> ():
+    def read_temis_data(region: MultiPolygon, filename: str) -> ():
+        # TODO Test this with region that spans the longitude -180/180
         min_lat = region.bounds[1] - region.bounds[1] % bin_width
         max_lat = region.bounds[3] + bin_width - (region.bounds[3] % bin_width)
         min_long = region.bounds[0] - region.bounds[0] % bin_width
@@ -76,7 +80,8 @@ class TEMISTropomiMonthlyMeanNOxEmissionCalculator(EOEmissionCalculator):
 
         result = []
 
-        with open(filename) as data:
+        # TODO Download file from temis.nl, if not present
+        with open(filename, 'r') as data:
             lat = -91
             for line in data:
                 if line.startswith("lat="):
@@ -86,7 +91,7 @@ class TEMISTropomiMonthlyMeanNOxEmissionCalculator(EOEmissionCalculator):
                     for count, long in enumerate(offset + x * bin_width for x in range(values_per_row)):
                         if min_long <= long <= max_long:
                             emission = int(line[count * 4:count * 4 + 4])  # All emission values are four digits wide
-                            result += [emission] if emission >= 0 else [0]
+                            result += [emission] if emission >= 0 else [0]  # TODO Use N/A instead?
                     offset += values_per_row * bin_width
 
         return result
@@ -123,7 +128,7 @@ class TEMISTropomiMonthlyMeanNOxEmissionCalculator(EOEmissionCalculator):
         """
 
         grid = {"type": "FeatureCollection", "features": []}
-        # TODO Test this with region that spans the longitude -180/180
+        # TODO Test this with region that spans the longitudes -180/180
         min_lat = region.bounds[1] - region.bounds[1] % height if snap else region.bounds[1]
         max_lat = region.bounds[3] + height - (region.bounds[3] % height) if snap else region.bounds[3]
         min_long = region.bounds[0] - region.bounds[0] % width if snap else region.bounds[0]
@@ -141,4 +146,4 @@ class TEMISTropomiMonthlyMeanNOxEmissionCalculator(EOEmissionCalculator):
                          (long, lat)]]}
                     })
 
-        return geopandas.GeoDataFrame.from_features(grid, crs=crs)
+        return GeoDataFrame.from_features(grid, crs=crs)
