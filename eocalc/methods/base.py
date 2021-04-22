@@ -36,6 +36,9 @@ class DateRange:
     def __len__(self) -> int:
         return (self.end - self.start).days + 1
 
+    def __iter__(self):
+        yield from [self.start + timedelta(days=count) for count in range(len(self))]
+
     def __setattr__(self, key, value):
         super.__setattr__(self, key, date.fromisoformat(value))
 

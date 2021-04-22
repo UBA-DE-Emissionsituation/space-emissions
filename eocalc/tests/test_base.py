@@ -27,6 +27,14 @@ class TestBaseMethods(unittest.TestCase):
         self.assertNotEqual(year2019, year2020)
         self.assertEqual(366, len(year2020))
 
+        august = DateRange("2018-08-01", "2018-08-31")
+        self.assertEqual(31, len(august))
+
+        count = 0
+        for _ in august:
+            count += 1
+        self.assertEqual(31, count)
+
         with self.assertRaises(ValueError):
             DateRange(start="2019-01-01", end="2018-12-31")
         with self.assertRaises(ValueError):
