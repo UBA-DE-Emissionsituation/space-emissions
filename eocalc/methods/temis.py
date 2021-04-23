@@ -3,14 +3,16 @@
 
 from datetime import date, timedelta
 
+import numpy
 from shapely.geometry import MultiPolygon, shape
-import geopandas
-from geopandas import GeoDataFrame
+from geopandas import GeoDataFrame, overlay
 
 from eocalc.context import Pollutant
 from eocalc.methods.base import EOEmissionCalculator, DateRange
 
+# TEMIS TOMS file format cell width and height [degrees]
 bin_width = 0.125
+# TEMis TOMS file format number of four digit values per line [1]
 values_per_row = 20
 
 
@@ -42,23 +44,32 @@ class TEMISTropomiMonthlyMeanNOxEmissionCalculator(EOEmissionCalculator):
         return pollutant == Pollutant.NOx
 
     def run(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
-
+        # 1. Overlay area given with cell matching the TEMIS data set
         grid = self._create_grid(region, bin_width, bin_width, snap=True, include_center_col=True)
 
+        # 2. Read TEMIS data into the grid, use cache to avoid re-reading the file for each day individually
         cache = {}
         for day in period:
-            month = f"{day:%Y-%m}"
-            if month not in cache.keys():
-                cache[month] = self.convert_concentration_to_mass(self.read_temis_data(region, f"data/temis/no2_{day:%Y%m}.asc"))
+            month_cache_key = f"{day:%Y-%m}"
+            if month_cache_key not in cache.keys():
+                concentrations = self.read_temis_data(region, f"data/temis/no2_{day:%Y%m}.asc")
+                # value [1/cm²] * TEMIS scale [1] / Avogadro constant [1] * NO2 molecule weight [g] / to [kg] * to [km²]
+                cache[month_cache_key] = [x * 10**13 / (6.022 * 10**23) * 46.01 / 1000 * 10**10 for x in concentrations]
 
-            grid[f"{day} emissions [kg]"] = cache[month]
+            grid[f"{day} emissions [kg]"] = cache[month_cache_key]  # Actually [kg/km²], but this cancels out below
 
-        grid = geopandas.overlay(grid, GeoDataFrame({'geometry': [region]}, crs="EPSG:4326"), how='intersection')
+        # 3. Clip to actual region and add a data frame column with each cell's size
+        grid = overlay(grid, GeoDataFrame({'geometry': [region]}, crs="EPSG:4326"), how='intersection')
         grid.insert(1, "area [km²]", grid.to_crs(epsg=5243).area / 10 ** 6)
-        # TODO Update emission columns by multiplying with area - this works but should be put in better Python
+
+        # 4. Update emission columns by multiplying with the area value and finally sum it all up
         for day in period:
             grid[f"{day} emissions [kg]"] = grid[f"{day} emissions [kg]"] * grid["area [km²]"]
-        grid.insert(2, "total emissions [kg]", grid.iloc[:, 2:len(period) + 3].sum(axis=1))
+        grid.insert(2, "total emissions [kg]", grid.iloc[:, -(len(period)+1):-1].sum(axis=1))
+        grid.insert(3, "number of values", len(period))
+        grid.insert(4, "missing values", grid.isna().sum(axis=1))
+
+        # 5. TODO Add GNFR data frame incl. uncertainties
 
         return {
             EOEmissionCalculator.TOTAL_EMISSIONS_KEY: grid["total emissions [kg]"].sum(),
@@ -66,12 +77,8 @@ class TEMISTropomiMonthlyMeanNOxEmissionCalculator(EOEmissionCalculator):
         }
 
     @staticmethod
-    def convert_concentration_to_mass(concentrations):
-        return [x * 10**13 / (6.022 * 10**23) * 46.01 / 1000 * 10**10 for x in concentrations]
-
-    @staticmethod
     def read_temis_data(region: MultiPolygon, filename: str) -> ():
-        # TODO Test this with region that spans the longitude -180/180
+        # TODO Do we need to make this work with regions wrapping around to long < -180 or long > 180?
         min_lat = region.bounds[1] - region.bounds[1] % bin_width
         max_lat = region.bounds[3] + bin_width - (region.bounds[3] % bin_width)
         min_long = region.bounds[0] - region.bounds[0] % bin_width
@@ -79,7 +86,7 @@ class TEMISTropomiMonthlyMeanNOxEmissionCalculator(EOEmissionCalculator):
 
         result = []
 
-        # TODO Download file from temis.nl, if not present
+        # TODO Download file from temis.nl, if not present (this needs to be thread-safe!)
         with open(filename, 'r') as data:
             lat = -91
             for line in data:
@@ -90,7 +97,7 @@ class TEMISTropomiMonthlyMeanNOxEmissionCalculator(EOEmissionCalculator):
                     for count, long in enumerate(offset + x * bin_width for x in range(values_per_row)):
                         if min_long <= long <= max_long:
                             emission = int(line[count * 4:count * 4 + 4])  # All emission values are four digits wide
-                            result += [emission] if emission >= 0 else [0]  # TODO Use N/A instead?
+                            result += [emission] if emission >= 0 else [numpy.NaN]
                     offset += values_per_row * bin_width
 
         return result
@@ -127,7 +134,7 @@ class TEMISTropomiMonthlyMeanNOxEmissionCalculator(EOEmissionCalculator):
         """
 
         grid = {"type": "FeatureCollection", "features": []}
-        # TODO Test this with region that spans the longitudes -180/180
+
         min_lat = region.bounds[1] - region.bounds[1] % height if snap else region.bounds[1]
         max_lat = region.bounds[3] + height - (region.bounds[3] % height) if snap else region.bounds[3]
         min_long = region.bounds[0] - region.bounds[0] % width if snap else region.bounds[0]
