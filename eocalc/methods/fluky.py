@@ -4,6 +4,7 @@
 import random
 from datetime import date
 
+import numpy as np
 from pandas import DataFrame
 
 import geopandas
@@ -60,14 +61,14 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
         results = {}
 
         # Generate data frame with random emission values per GNFR sector
-        data = DataFrame(index=GNFR,
-                         columns=[f"{pollutant.name} [kt]", "Umin [%]", "Umax [%]"])
+        data = self._create_gnfr_frame(pollutant)
         for sector in GNFR:
             data.loc[sector] = [random.random()*100, random.random()*18, random.random()*22]
         # Add totals row at the bottom
         data.loc["Totals"] = data.sum(axis=0)
 
         # Generate one-line geo data frame
+        # TODO Generate a proper grid here!
         geo_data = geopandas.GeoDataFrame({f"{pollutant.name} [kt]": [data.loc["Totals"][0]],
                                            "Umin [%]": [data.loc["Totals"][1]],
                                            "Umax [%]": [data.loc["Totals"][2]],
@@ -78,3 +79,11 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
 
         self._state = Status.READY
         return results
+
+    @staticmethod
+    def _create_gnfr_frame(pollutant: Pollutant) -> DataFrame:
+        frame = DataFrame(index=GNFR, columns=[f"{pollutant.name} emissions [kt]", "Umin [%]", "Umax [%]"])
+        frame[:] = np.nan
+        frame["Totals"] = np.nan
+
+        return frame

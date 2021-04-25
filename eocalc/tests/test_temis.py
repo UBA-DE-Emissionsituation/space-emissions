@@ -7,13 +7,13 @@ from shapely.geometry import shape
 
 from eocalc.context import Pollutant
 from eocalc.methods.base import DateRange
-from eocalc.methods.temis import TEMISTropomiMonthlyMeanNOxEmissionCalculator
+from eocalc.methods.temis import TropomiMonthlyMeanAggregator
 
 
 class TestTEMISTropomiMonthlyMeanNOxMethods(unittest.TestCase):
 
     def test_covers(self):
-        calc = TEMISTropomiMonthlyMeanNOxEmissionCalculator()
+        calc = TropomiMonthlyMeanAggregator()
         north = shape({'type': 'MultiPolygon',
                       'coordinates': [[[[-110., 20.], [140., 20.], [180., 40.], [-180., 30.], [-110., 20.]]]]})
         south = shape({'type': 'MultiPolygon',
@@ -53,25 +53,26 @@ class TestTEMISTropomiMonthlyMeanNOxMethods(unittest.TestCase):
 
     def test_supports(self):
         for p in Pollutant:
-            self.assertTrue(TEMISTropomiMonthlyMeanNOxEmissionCalculator.supports(p)) if p == Pollutant.NOx else \
-                        self.assertFalse(TEMISTropomiMonthlyMeanNOxEmissionCalculator.supports(p))
-        self.assertFalse(TEMISTropomiMonthlyMeanNOxEmissionCalculator.supports(None))
+            self.assertTrue(TropomiMonthlyMeanAggregator.supports(p)) if p == Pollutant.NOx else \
+                        self.assertFalse(TropomiMonthlyMeanAggregator.supports(p))
+        self.assertFalse(TropomiMonthlyMeanAggregator.supports(None))
 
     def test_run(self):
         with open("data/regions/germany.geo.json", 'r') as geojson_file:
             germany = shape(json.load(geojson_file)["geometry"])
 
-        result = TEMISTropomiMonthlyMeanNOxEmissionCalculator().run(germany, DateRange(start='2018-08-01', end='2018-08-31'), Pollutant.NOx)
-        self.assertTrue(22.5 <= result[TEMISTropomiMonthlyMeanNOxEmissionCalculator.TOTAL_EMISSIONS_KEY]/10**6 <= 22.6)
+        result = TropomiMonthlyMeanAggregator().run(germany, DateRange(start='2018-08-01', end='2018-08-31'), Pollutant.NOx)
+        self.assertTrue(22.5 <= result[TropomiMonthlyMeanAggregator.TOTAL_EMISSIONS_KEY] / 10 ** 6 <= 22.6)
 
     def test_read_temis_data(self):
         with open("data/regions/adak-left.geo.json", 'r') as geojson_file:
             region = shape(json.load(geojson_file)["geometry"])
 
-        TEMISTropomiMonthlyMeanNOxEmissionCalculator.read_temis_data(region, "data/temis/no2_201808.asc")
+        TropomiMonthlyMeanAggregator.read_temis_data(region, "data/temis/no2_201808.asc")
 
     def test_create_grid(self):
         with open("data/regions/adak-left.geo.json", 'r') as geojson_file:
             region = shape(json.load(geojson_file)["geometry"])
 
-        grid = TEMISTropomiMonthlyMeanNOxEmissionCalculator._create_grid(region, 1, 1)
+        grid = TropomiMonthlyMeanAggregator._create_grid(region, 1, 1)
+        # TODO Add more tests!

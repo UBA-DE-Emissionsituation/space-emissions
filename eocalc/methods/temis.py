@@ -16,7 +16,7 @@ bin_width = 0.125
 values_per_row = 20
 
 
-class TEMISTropomiMonthlyMeanNOxEmissionCalculator(EOEmissionCalculator):
+class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
 
     @staticmethod
     def minimum_area_size() -> int:
@@ -56,24 +56,27 @@ class TEMISTropomiMonthlyMeanNOxEmissionCalculator(EOEmissionCalculator):
                 # value [1/cm²] * TEMIS scale [1] / Avogadro constant [1] * NO2 molecule weight [g] / to [kg] * to [km²]
                 cache[month_cache_key] = [x * 10**13 / (6.022 * 10**23) * 46.01 / 1000 * 10**10 for x in concentrations]
 
-            grid[f"{day} emissions [kg]"] = cache[month_cache_key]  # Actually [kg/km²], but this cancels out below
+            grid[f"{day} NO2 emissions [kg]"] = cache[month_cache_key]  # Actually [kg/km²], but this cancels out below
 
         # 3. Clip to actual region and add a data frame column with each cell's size
         grid = overlay(grid, GeoDataFrame({'geometry': [region]}, crs="EPSG:4326"), how='intersection')
         grid.insert(1, "area [km²]", grid.to_crs(epsg=5243).area / 10 ** 6)
 
         # 4. Update emission columns by multiplying with the area value and finally sum it all up
-        for day in period:
-            grid[f"{day} emissions [kg]"] = grid[f"{day} emissions [kg]"] * grid["area [km²]"]
-        grid.insert(2, "total emissions [kg]", grid.iloc[:, -(len(period)+1):-1].sum(axis=1))
-        grid.insert(3, "number of values", len(period))
-        grid.insert(4, "missing values", grid.isna().sum(axis=1))
+        grid[:, -(len(period) + 1):-1] = grid[:, -(len(period)+1):-1] * grid["area [km²]"]
+        #for day in period:
+        #    grid[f"{day} NO2 emissions [kg]"] = grid[f"{day} emissions [kg]"] * grid
+        grid.insert(2, "Total NO2 emissions [kg]", grid[:, -(len(period)+1):-1].sum(axis=1))
+        grid.insert(3, "Umin [%]", 42)  # TODO Calculate uncertainties
+        grid.insert(4, "Umax [%]", 42)
+        grid.insert(5, "Number of values [1]", len(period))
+        grid.insert(6, "Missing values [1]", grid.isna().sum(axis=1))
 
         # 5. TODO Add GNFR data frame incl. uncertainties
 
         return {
-            EOEmissionCalculator.TOTAL_EMISSIONS_KEY: grid["total emissions [kg]"].sum(),
-            EOEmissionCalculator.GRIDDED_EMISSIONS_KEY: grid
+            self.__class__.TOTAL_EMISSIONS_KEY: grid["total emissions [kg]"].sum(),
+            self.__class__.GRIDDED_EMISSIONS_KEY: grid
         }
 
     @staticmethod

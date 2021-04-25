@@ -5,7 +5,7 @@ from datetime import date
 from shapely.geometry import MultiPolygon, shape
 
 from eocalc.context import Pollutant
-from eocalc.methods.base import DateRange, Status, EOEmissionCalculator
+from eocalc.methods.base import DateRange, EOEmissionCalculator
 
 
 class TestBaseMethods(unittest.TestCase):
@@ -34,6 +34,9 @@ class TestBaseMethods(unittest.TestCase):
         for _ in august:
             count += 1
         self.assertEqual(31, count)
+
+        one_day = DateRange("2018-08-01", "2018-08-01")
+        self.assertEqual(1, len(one_day))
 
         with self.assertRaises(ValueError):
             DateRange(start="2019-01-01", end="2018-12-31")
