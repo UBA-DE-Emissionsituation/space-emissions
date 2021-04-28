@@ -4,9 +4,6 @@
 import random
 from datetime import date
 
-import numpy as np
-from pandas import DataFrame
-
 import geopandas
 import pyproj
 import shapely.ops
@@ -67,7 +64,6 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
         # Add totals row at the bottom
         data.loc["Totals"] = data.sum(axis=0)
 
-        # Generate one-line geo data frame
         # TODO Generate a proper grid here!
         geo_data = geopandas.GeoDataFrame({f"{pollutant.name} [kt]": [data.loc["Totals"][0]],
                                            "Umin [%]": [data.loc["Totals"][1]],
@@ -79,11 +75,3 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
 
         self._state = Status.READY
         return results
-
-    @staticmethod
-    def _create_gnfr_frame(pollutant: Pollutant) -> DataFrame:
-        frame = DataFrame(index=GNFR, columns=[f"{pollutant.name} emissions [kt]", "Umin [%]", "Umax [%]"])
-        frame[:] = np.nan
-        frame["Totals"] = np.nan
-
-        return frame

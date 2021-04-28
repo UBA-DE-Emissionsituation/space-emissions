@@ -7,7 +7,7 @@ from enum import Enum, auto
 class Pollutant(Enum):
     """Defines list of air pollutants considered for this project."""
 
-    NOx = auto()
+    NO2 = auto()
     SO2 = auto()
     NH3 = auto()
     PM2_5 = auto()

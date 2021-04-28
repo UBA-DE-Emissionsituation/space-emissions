@@ -4,10 +4,14 @@
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 from datetime import date, timedelta
+import math
 
+import numpy as np
+from pandas import DataFrame
+from geopandas import GeoDataFrame
 from shapely.geometry import MultiPolygon
 
-from eocalc.context import Pollutant
+from eocalc.context import Pollutant, GNFR
 
 
 class Status(Enum):
@@ -213,3 +217,75 @@ class EOEmissionCalculator(ABC):
 
         """
         pass
+
+    @staticmethod
+    def _create_gnfr_frame(pollutant: Pollutant) -> DataFrame:
+        """
+        Generate empty result data frame. Has one row per GNFR sector, plus a row named "Totals".
+        Also comes with three columns for the emission values and min/max uncertainties.
+        All rows are pre-filled with n/a.
+
+        Parameters
+        ----------
+        pollutant : Pollutant
+            Pollutant name to include in first column name.
+
+        Returns
+        -------
+        DataFrame
+            Table to be filled by calculation methods.
+        """
+        cols = [f"{pollutant.name} emissions [kt]", "Umin [%]", "Umax [%]"]
+        return DataFrame(index=GNFR, columns=cols, data=np.nan).append(
+                    DataFrame(index=["Totals"], columns=cols, data=np.nan))
+
+    @staticmethod
+    def _create_grid(region: MultiPolygon, width: float, height: float, snap: bool = False,
+                     include_center_col: bool = False, crs: str = "EPSG:4326") -> GeoDataFrame:
+        """
+        Overlay given region with grid data frame. Each cell will be created as a row, starting
+        at the bottom left and then moving up row by row. Thus, the last row will represent the
+        top right corner cell of the grid.
+
+        Parameters
+        ----------
+        region: MultiPolygon
+            Area to cover.
+        width: float
+            Cell width [degrees].
+        height: float
+            Cell height [degrees].
+        snap: bool
+            Make grid corners snap. If true, the lower left corner of the lower left cell
+            will have long % width == 0 and lat % height == 0. If false, region bounds will
+            be used.
+        include_center_col: bool
+            Add column to data frame with cell center coordinates.
+        crs: str
+            CRS to set on the data frame.
+
+        Returns
+        -------
+        GeoDataFrame
+            Data frame with cell features spanning the full region. Will contain at least one row.
+        """
+        grid = {"type": "FeatureCollection", "features": []}
+
+        min_lat = region.bounds[1] - region.bounds[1] % height if snap else region.bounds[1]
+        max_lat = region.bounds[3] + region.bounds[3] % height if snap else region.bounds[3]
+        min_long = region.bounds[0] - region.bounds[0] % width if snap else region.bounds[0]
+        max_long = region.bounds[2] + region.bounds[2] % width if snap else region.bounds[2]
+        for lat in (min_lat + y * height for y in range(max([1, math.ceil((max_lat - min_lat) / height)]))):
+            for long in (min_long + x * width for x in range(max([1, math.ceil((max_long - min_long) / width)]))):
+                grid["features"].append({
+                    "type": "Feature",
+                    "properties": {"center": f"{lat + height / 2}/{long + width / 2}"} if include_center_col else {},
+                    "geometry": {"type": "Polygon", "coordinates": [
+                        [(long, lat),
+                         (long + width, lat),
+                         (long + width, lat + height),
+                         (long, lat + height),
+                         (long, lat)]]}
+                })
+
+        return GeoDataFrame.from_features(grid, crs=crs)

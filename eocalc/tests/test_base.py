@@ -4,7 +4,7 @@ from datetime import date
 
 from shapely.geometry import MultiPolygon, shape
 
-from eocalc.context import Pollutant
+from eocalc.context import Pollutant, GNFR
 from eocalc.methods.base import DateRange, EOEmissionCalculator
 
 
@@ -60,6 +60,49 @@ class TestBaseMethods(unittest.TestCase):
         identical = shape({'type': 'MultiPolygon',
                       'coordinates': [[[[-180., -90.], [180., -90.], [180., 0.], [-180., 0.], [-180., -90.]]]]})
         self.assertTrue(calc.covers(identical))
+
+    def test_create_gnfr_frame(self):
+        for p in Pollutant:
+            frame = EOEmissionCalculator._create_gnfr_frame(p)
+            self.assertEqual(len(GNFR) + 1, len(frame))
+            self.assertEqual(3, len(frame.columns))
+
+    def test_create_grid(self):
+        box = shape(dict(type='MultiPolygon', coordinates=[[[[0., 0.], [0., 1.], [1., 1.], [1., 0.], [0., 0.]]]]))
+
+        self.assertEqual(1, len(EOEmissionCalculator._create_grid(box, 10, 10, snap=False)))
+        self.assertEqual(1, len(EOEmissionCalculator._create_grid(box, 2, 2, snap=False)))
+        self.assertEqual(1, len(EOEmissionCalculator._create_grid(box, 1, 1, snap=False)))
+        self.assertEqual(1, len(EOEmissionCalculator._create_grid(box, 1, 1, snap=True)))
+        self.assertEqual(2, len(EOEmissionCalculator._create_grid(box, 0.5, 1, snap=False)))
+        self.assertEqual(2, len(EOEmissionCalculator._create_grid(box, 1, 0.5, snap=True)))
+        self.assertEqual(4, len(EOEmissionCalculator._create_grid(box, 0.5, 0.5, snap=False)))
+        self.assertEqual(4, len(EOEmissionCalculator._create_grid(box, 0.5, 0.5, snap=True)))
+        self.assertEqual(16, len(EOEmissionCalculator._create_grid(box, 0.3, 0.3, snap=True)))
+        self.assertEqual(16, len(EOEmissionCalculator._create_grid(box, 0.3, 0.3, snap=False)))
+
+        other = shape(dict(type='MultiPolygon',
+                           coordinates=[[[[-0.5, -0.5], [-0.5, 0.5], [0.5, 0.5], [0.5, -0.5], [-0.5, -0.5]]]]))
+
+        self.assertEqual(1, len(EOEmissionCalculator._create_grid(other, 10, 10, snap=False)))
+        self.assertEqual(4, len(EOEmissionCalculator._create_grid(other, 10, 10, snap=True)))
+        self.assertEqual(1, len(EOEmissionCalculator._create_grid(other, 2, 2, snap=False)))
+        self.assertEqual(1, len(EOEmissionCalculator._create_grid(other, 1, 1, snap=False)))
+        self.assertEqual(4, len(EOEmissionCalculator._create_grid(other, 1, 1, snap=True)))
+        self.assertEqual(2, len(EOEmissionCalculator._create_grid(other, 0.5, 1, snap=False)))
+        self.assertEqual(4, len(EOEmissionCalculator._create_grid(other, 1, 0.5, snap=True)))
+        self.assertEqual(4, len(EOEmissionCalculator._create_grid(other, 0.5, 0.5, snap=False)))
+        self.assertEqual(4, len(EOEmissionCalculator._create_grid(other, 0.5, 0.5, snap=True)))
+        self.assertEqual(25, len(EOEmissionCalculator._create_grid(other, 0.3, 0.3, snap=True)))
+        self.assertEqual(16, len(EOEmissionCalculator._create_grid(other, 0.3, 0.3, snap=False)))
+
+        third = shape(dict(type='MultiPolygon',
+                           coordinates=[[[[-202, -90], [-202, 22], [301, 22], [301, -90], [-202, -90]]]]))
+
+        self.assertEqual(51*12, len(EOEmissionCalculator._create_grid(third, 10, 10, snap=False)))
+        self.assertEqual(52*12, len(EOEmissionCalculator._create_grid(third, 10, 10, snap=True)))
+        self.assertEqual(11*12, len(EOEmissionCalculator._create_grid(third, 50, 10, snap=False)))
+        self.assertEqual(12*12, len(EOEmissionCalculator._create_grid(third, 50, 10, snap=True)))
 
 
 class TestEOEmissionCalculator(EOEmissionCalculator):

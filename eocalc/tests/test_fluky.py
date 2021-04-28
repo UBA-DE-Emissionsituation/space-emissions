@@ -3,7 +3,7 @@ import unittest
 
 from shapely.geometry import shape
 
-from eocalc.context import Pollutant
+from eocalc.context import Pollutant, GNFR
 from eocalc.methods.base import DateRange
 from eocalc.methods.fluky import RandomEOEmissionCalculator
 

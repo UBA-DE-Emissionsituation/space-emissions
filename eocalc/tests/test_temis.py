@@ -10,7 +10,7 @@ from eocalc.methods.base import DateRange
 from eocalc.methods.temis import TropomiMonthlyMeanAggregator
 
 
-class TestTEMISTropomiMonthlyMeanNOxMethods(unittest.TestCase):
+class TestTropomiMonthlyMeanAggregatorMethods(unittest.TestCase):
 
     def test_covers(self):
         calc = TropomiMonthlyMeanAggregator()
@@ -53,7 +53,7 @@ class TestTEMISTropomiMonthlyMeanNOxMethods(unittest.TestCase):
 
     def test_supports(self):
         for p in Pollutant:
-            self.assertTrue(TropomiMonthlyMeanAggregator.supports(p)) if p == Pollutant.NOx else \
+            self.assertTrue(TropomiMonthlyMeanAggregator.supports(p)) if p == Pollutant.NO2 else \
                         self.assertFalse(TropomiMonthlyMeanAggregator.supports(p))
         self.assertFalse(TropomiMonthlyMeanAggregator.supports(None))
 
@@ -61,7 +61,7 @@ class TestTEMISTropomiMonthlyMeanNOxMethods(unittest.TestCase):
         with open("data/regions/germany.geo.json", 'r') as geojson_file:
             germany = shape(json.load(geojson_file)["geometry"])
 
-        result = TropomiMonthlyMeanAggregator().run(germany, DateRange(start='2018-08-01', end='2018-08-31'), Pollutant.NOx)
+        result = TropomiMonthlyMeanAggregator().run(germany, DateRange(start='2018-08-01', end='2018-08-31'), Pollutant.NO2)
         self.assertTrue(22.5 <= result[TropomiMonthlyMeanAggregator.TOTAL_EMISSIONS_KEY] / 10 ** 6 <= 22.6)
 
     def test_read_temis_data(self):
@@ -70,9 +70,6 @@ class TestTEMISTropomiMonthlyMeanNOxMethods(unittest.TestCase):
 
         TropomiMonthlyMeanAggregator.read_temis_data(region, "data/temis/no2_201808.asc")
 
-    def test_create_grid(self):
-        with open("data/regions/adak-left.geo.json", 'r') as geojson_file:
-            region = shape(json.load(geojson_file)["geometry"])
 
-        grid = TropomiMonthlyMeanAggregator._create_grid(region, 1, 1)
-        # TODO Add more tests!
+if __name__ == '__main__':
+    unittest.main()
