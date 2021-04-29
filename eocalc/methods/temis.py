@@ -4,6 +4,7 @@
 from datetime import date, timedelta
 
 import numpy
+from pandas import Series
 from shapely.geometry import MultiPolygon, shape
 from geopandas import GeoDataFrame, overlay
 
@@ -11,9 +12,11 @@ from eocalc.context import Pollutant
 from eocalc.methods.base import EOEmissionCalculator, DateRange
 
 # TEMIS TOMS file format cell width and height [degrees]
-bin_width = 0.125
-# TEMis TOMS file format number of four digit values per line [1]
-values_per_row = 20
+temis_bin_width = 0.125
+# TEMIS TOMS file format number of four digit values per line [1]
+temis_values_per_row = 20
+# Uncertainty value assumed per cell (TODO find a real value here!)
+temis_cell_uncertainty = 1000
 
 
 class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
@@ -45,7 +48,7 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
 
     def run(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
         # 1. Overlay area given with cell matching the TEMIS data set
-        grid = self._create_grid(region, bin_width, bin_width, snap=True, include_center_col=True)
+        grid = self._create_grid(region, temis_bin_width, temis_bin_width, snap=True, include_center_col=True)
 
         # 2. Read TEMIS data into the grid, use cache to avoid re-reading the file for each day individually
         cache = {}
@@ -66,25 +69,27 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
         # 4. Update emission columns by multiplying with the area value and sum it all up
         grid.iloc[:, -(len(period)+1):-1] = grid.iloc[:, -(len(period)+1):-1].mul(grid["Area [km²]"], axis=0)
         grid.insert(2, f"Total {pollutant.name} emissions [kg]", grid.iloc[:, -(len(period)+1):-1].sum(axis=1))
-        grid.insert(3, "Umin [%]", numpy.nan)  # TODO Calculate uncertainties
-        grid.insert(4, "Umax [%]", numpy.nan)  # TODO Calculate uncertainties
+        cell_uncertainties = [self._combine_uncertainties(grid.iloc[row, -(len(period)+1):-1],
+                            Series(temis_cell_uncertainty).repeat(len(period))) for row in range(len(grid))]
+        grid.insert(3, "Umin [%]", cell_uncertainties)
+        grid.insert(4, "Umax [%]", cell_uncertainties)
         grid.insert(5, "Number of values [1]", len(period))
         grid.insert(6, "Missing values [1]", grid.iloc[:, -(len(period)+1):-1].isna().sum(axis=1))
 
-        # 5. TODO Add GNFR data frame incl. uncertainties
+        # 5. Add GNFR table incl. uncertainties
+        table = self._create_gnfr_table(pollutant)
+        total_uncertainty = self._combine_uncertainties(grid.iloc[:, 2], grid.iloc[:, 3])
+        table.iloc[-1] = [grid.iloc[:, 2].sum() / 10**6, total_uncertainty, total_uncertainty]
 
-        return {
-            self.__class__.TOTAL_EMISSIONS_KEY: grid[f"Total {pollutant.name} emissions [kg]"].sum(),
-            self.__class__.GRIDDED_EMISSIONS_KEY: grid
-        }
+        return {self.__class__.TOTAL_EMISSIONS_KEY: table, self.__class__.GRIDDED_EMISSIONS_KEY: grid}
 
     @staticmethod
     def read_temis_data(region: MultiPolygon, filename: str) -> ():
         # TODO Do we need to make this work with regions wrapping around to long < -180 or long > 180?
-        min_lat = region.bounds[1] - region.bounds[1] % bin_width
-        max_lat = region.bounds[3] + region.bounds[3] % bin_width
-        min_long = region.bounds[0] - region.bounds[0] % bin_width
-        max_long = region.bounds[2] + region.bounds[2] % bin_width
+        min_lat = region.bounds[1] - region.bounds[1] % temis_bin_width
+        max_lat = region.bounds[3] + region.bounds[3] % temis_bin_width
+        min_long = region.bounds[0] - region.bounds[0] % temis_bin_width
+        max_long = region.bounds[2] + region.bounds[2] % temis_bin_width
 
         result = []
 
@@ -93,15 +98,13 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
             lat = -91
             for line in data:
                 if line.startswith("lat="):
-                    lat = float(line.split('=')[1]) - bin_width / 2
+                    lat = float(line.split('=')[1]) - temis_bin_width / 2
                     offset = -180  # We need to go from -180° to +180° for each latitude
                 elif min_lat <= lat <= max_lat and line[:4].strip().lstrip('-').isdigit():
-                    for count, long in enumerate(offset + x * bin_width for x in range(values_per_row)):
+                    for count, long in enumerate(offset + x * temis_bin_width for x in range(temis_values_per_row)):
                         if min_long <= long <= max_long:
                             emission = int(line[count * 4:count * 4 + 4])  # All emission values are four digits wide
                             result += [emission] if emission >= 0 else [numpy.NaN]
-                    offset += values_per_row * bin_width
+                    offset += temis_values_per_row * temis_bin_width
 
         return result
-
-

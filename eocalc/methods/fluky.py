@@ -58,7 +58,7 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
         results = {}
 
         # Generate data frame with random emission values per GNFR sector
-        data = self._create_gnfr_frame(pollutant)
+        data = self._create_gnfr_table(pollutant)
         for sector in GNFR:
             data.loc[sector] = [random.random()*100, random.random()*18, random.random()*22]
         # Add totals row at the bottom

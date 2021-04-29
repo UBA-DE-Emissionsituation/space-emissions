@@ -62,7 +62,7 @@ class TestTropomiMonthlyMeanAggregatorMethods(unittest.TestCase):
             germany = shape(json.load(geojson_file)["geometry"])
 
         result = TropomiMonthlyMeanAggregator().run(germany, DateRange(start='2018-08-01', end='2018-08-31'), Pollutant.NO2)
-        self.assertTrue(22.5 <= result[TropomiMonthlyMeanAggregator.TOTAL_EMISSIONS_KEY] / 10 ** 6 <= 22.6)
+        self.assertTrue(22.5 <= result[TropomiMonthlyMeanAggregator.TOTAL_EMISSIONS_KEY].iloc[-1, 0] <= 22.6)
 
     def test_read_temis_data(self):
         with open("data/regions/adak-left.geo.json", 'r') as geojson_file:

@@ -7,7 +7,7 @@ from datetime import date, timedelta
 import math
 
 import numpy as np
-from pandas import DataFrame
+from pandas import DataFrame, Series
 from geopandas import GeoDataFrame
 from shapely.geometry import MultiPolygon
 
@@ -219,7 +219,7 @@ class EOEmissionCalculator(ABC):
         pass
 
     @staticmethod
-    def _create_gnfr_frame(pollutant: Pollutant) -> DataFrame:
+    def _create_gnfr_table(pollutant: Pollutant) -> DataFrame:
         """
         Generate empty result data frame. Has one row per GNFR sector, plus a row named "Totals".
         Also comes with three columns for the emission values and min/max uncertainties.
@@ -240,6 +240,38 @@ class EOEmissionCalculator(ABC):
                     DataFrame(index=["Totals"], columns=cols, data=np.nan))
 
     @staticmethod
+    def _combine_uncertainties(values: Series, uncertainties: Series) -> float:
+        """
+        Calculate combined uncertainty using simple error propagation. Uses IPCC
+        Guidelines formula 6.3 to aggregate and weight given values and uncertainties.
+        U = sqrt((x1 * u1)^2 + ... + (xn * un)^2) / x1 + ... + xn
+
+        Parameters
+        ----------
+        values: Series
+            List of values to combine uncertainties for.
+        uncertainties: Series
+            List of uncertainties for values given.
+
+        Returns
+        -------
+        float
+            Combined uncertainty.
+        """
+        if len(values) == 0 or len(uncertainties) == 0:
+            raise ValueError("Neither values nor uncertainties may be empty.")
+        elif len(values) != len(uncertainties):
+            raise ValueError("List of values need to have the same length as the list of uncertainties.")
+        elif (uncertainties.values < 0).any() or uncertainties.isnull().values.any():
+            raise ValueError("All uncertainties need to be positive real numbers.")
+        elif values.sum() == 0:
+            return 0
+        else:
+            values = values.reset_index(drop=True)
+            uncertainties = uncertainties.reset_index(drop=True)
+            return ((values.multiply(uncertainties, fill_value=0)) ** 2).sum() ** 0.5 / values.sum()
+
+    @staticmethod
     def _create_grid(region: MultiPolygon, width: float, height: float, snap: bool = False,
                      include_center_col: bool = False, crs: str = "EPSG:4326") -> GeoDataFrame:
         """
@@ -258,11 +290,11 @@ class EOEmissionCalculator(ABC):
         snap: bool
             Make grid corners snap. If true, the lower left corner of the lower left cell
             will have long % width == 0 and lat % height == 0. If false, region bounds will
-            be used.
+            be used. Defaults to False.
         include_center_col: bool
-            Add column to data frame with cell center coordinates.
+            Add column to data frame with cell center coordinates. Defaults to False.
         crs: str
-            CRS to set on the data frame.
+            CRS to set on the data frame. Defaults to "EPSG:4326" (WGS84)
 
         Returns
         -------
@@ -275,8 +307,9 @@ class EOEmissionCalculator(ABC):
         max_lat = region.bounds[3] + region.bounds[3] % height if snap else region.bounds[3]
         min_long = region.bounds[0] - region.bounds[0] % width if snap else region.bounds[0]
         max_long = region.bounds[2] + region.bounds[2] % width if snap else region.bounds[2]
-        for lat in (min_lat + y * height for y in range(max([1, math.ceil((max_lat - min_lat) / height)]))):
-            for long in (min_long + x * width for x in range(max([1, math.ceil((max_long - min_long) / width)]))):
+
+        for lat in (min_lat + y * height for y in range(math.ceil((max_lat - min_lat) / height))):
+            for long in (min_long + x * width for x in range(math.ceil((max_long - min_long) / width))):
                 grid["features"].append({
                     "type": "Feature",
                     "properties": {"center": f"{lat + height / 2}/{long + width / 2}"} if include_center_col else {},

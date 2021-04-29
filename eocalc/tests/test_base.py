@@ -2,6 +2,8 @@
 import unittest
 from datetime import date
 
+import numpy
+from pandas import Series
 from shapely.geometry import MultiPolygon, shape
 
 from eocalc.context import Pollutant, GNFR
@@ -63,9 +65,34 @@ class TestBaseMethods(unittest.TestCase):
 
     def test_create_gnfr_frame(self):
         for p in Pollutant:
-            frame = EOEmissionCalculator._create_gnfr_frame(p)
+            frame = EOEmissionCalculator._create_gnfr_table(p)
             self.assertEqual(len(GNFR) + 1, len(frame))
             self.assertEqual(3, len(frame.columns))
+
+    def test_combine_uncertainties(self):
+        self.assertEqual(2, EOEmissionCalculator._combine_uncertainties(Series([10]), Series([2])))
+        self.assertEqual(((10*2)**2+(10*4)**2)**0.5/20, EOEmissionCalculator._combine_uncertainties(Series([10, 10]), Series([2, 4])))
+
+        self.assertEqual(2, EOEmissionCalculator._combine_uncertainties(Series([10], index=['A']), Series([2], index=['A'])))
+        self.assertEqual(2, EOEmissionCalculator._combine_uncertainties(Series([10], index=['A']), Series([2], index=['B'])))
+
+        self.assertEqual(((10 * 2) ** 2 + (10 * 4) ** 2) ** 0.5 / 20,
+                         EOEmissionCalculator._combine_uncertainties(Series([10, numpy.nan, 10]), Series([2, 3, 4])))
+        self.assertEqual(((10 * 2) ** 2) ** 0.5 / 10,
+                         EOEmissionCalculator._combine_uncertainties(Series([10, numpy.nan, numpy.nan]), Series([2, 3, 4])))
+        self.assertEqual(0,
+                         EOEmissionCalculator._combine_uncertainties(Series([numpy.nan, numpy.nan, numpy.nan]), Series([2, 3, 4])))
+
+        with self.assertRaises(ValueError):
+            EOEmissionCalculator._combine_uncertainties(Series([]), Series([]))
+        with self.assertRaises(ValueError):
+            EOEmissionCalculator._combine_uncertainties(Series([]), Series([2]))
+        with self.assertRaises(ValueError):
+            EOEmissionCalculator._combine_uncertainties(Series([10, 20]), Series([2]))
+        with self.assertRaises(ValueError):
+            EOEmissionCalculator._combine_uncertainties(Series([10, 20]), Series([2, -4]))
+        with self.assertRaises(ValueError):
+            EOEmissionCalculator._combine_uncertainties(Series([10, 20]), Series([2, numpy.nan]))
 
     def test_create_grid(self):
         box = shape(dict(type='MultiPolygon', coordinates=[[[[0., 0.], [0., 1.], [1., 1.], [1., 0.], [0., 0.]]]]))
