@@ -48,7 +48,7 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
 
     def run(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
         # 1. Overlay area given with cell matching the TEMIS data set
-        grid = self._create_grid(region, temis_bin_width, temis_bin_width, snap=True, include_center_col=True)
+        grid = self._create_grid(region, temis_bin_width, temis_bin_width, snap=True, include_center_col=False)
 
         # 2. Read TEMIS data into the grid, use cache to avoid re-reading the file for each day individually
         cache = {}
@@ -64,22 +64,22 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
 
         # 3. Clip to actual region and add a data frame column with each cell's size
         grid = overlay(grid, GeoDataFrame({'geometry': [region]}, crs="EPSG:4326"), how='intersection')
-        grid.insert(1, "Area [km²]", grid.to_crs(epsg=5243).area / 10 ** 6)
+        grid.insert(0, "Area [km²]", grid.to_crs(epsg=5243).area / 10 ** 6)
 
         # 4. Update emission columns by multiplying with the area value and sum it all up
         grid.iloc[:, -(len(period)+1):-1] = grid.iloc[:, -(len(period)+1):-1].mul(grid["Area [km²]"], axis=0)
-        grid.insert(2, f"Total {pollutant.name} emissions [kg]", grid.iloc[:, -(len(period)+1):-1].sum(axis=1))
+        grid.insert(1, f"Total {pollutant.name} emissions [kg]", grid.iloc[:, -(len(period)+1):-1].sum(axis=1))
         cell_uncertainties = [self._combine_uncertainties(grid.iloc[row, -(len(period)+1):-1],
                             Series(temis_cell_uncertainty).repeat(len(period))) for row in range(len(grid))]
-        grid.insert(3, "Umin [%]", cell_uncertainties)
-        grid.insert(4, "Umax [%]", cell_uncertainties)
-        grid.insert(5, "Number of values [1]", len(period))
-        grid.insert(6, "Missing values [1]", grid.iloc[:, -(len(period)+1):-1].isna().sum(axis=1))
+        grid.insert(2, "Umin [%]", cell_uncertainties)
+        grid.insert(3, "Umax [%]", cell_uncertainties)
+        grid.insert(4, "Number of values [1]", len(period))
+        grid.insert(5, "Missing values [1]", grid.iloc[:, -(len(period)+1):-1].isna().sum(axis=1))
 
         # 5. Add GNFR table incl. uncertainties
         table = self._create_gnfr_table(pollutant)
-        total_uncertainty = self._combine_uncertainties(grid.iloc[:, 2], grid.iloc[:, 3])
-        table.iloc[-1] = [grid.iloc[:, 2].sum() / 10**6, total_uncertainty, total_uncertainty]
+        total_uncertainty = self._combine_uncertainties(grid.iloc[:, 1], grid.iloc[:, 2])
+        table.iloc[-1] = [grid.iloc[:, 1].sum() / 10**6, total_uncertainty, total_uncertainty]
 
         return {self.__class__.TOTAL_EMISSIONS_KEY: table, self.__class__.GRIDDED_EMISSIONS_KEY: grid}
 

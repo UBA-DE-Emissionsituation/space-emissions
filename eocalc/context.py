@@ -39,3 +39,6 @@ class GNFR(Enum):
     O_AviCruise = auto()
     P_IntShipping = auto()
     z_Memo = auto()
+
+    def __str__(self):
+        return self.name
