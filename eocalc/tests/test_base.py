@@ -28,6 +28,11 @@ class TestBaseMethods(unittest.TestCase):
         year2020 = DateRange("2020-01-01", "2020-12-31")
         self.assertNotEqual(year2019, year2020)
         self.assertEqual(366, len(year2020))
+        year2020b = DateRange("2020-01-01", "2020-12-31")
+        self.assertEqual(year2020, year2020b)
+
+        self.assertNotEqual(hash(year2019), hash(year2020))
+        self.assertEqual(hash(year2020), hash(year2020b))
 
         august = DateRange("2018-08-01", "2018-08-31")
         self.assertEqual(31, len(august))

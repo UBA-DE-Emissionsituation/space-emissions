@@ -32,10 +32,10 @@ class DateRange:
         return f"[{self.start} to {self.end}, {len(self)} days]"
 
     def __eq__(self, other: object) -> bool:
-        return self.__dict__ == other.__dict__ if isinstance(other, self.__class__) else False
+        return isinstance(other, type(self)) and (self.start, self.end) == (other.start, other.end)
 
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
+    def __hash__(self) -> int:
+        return hash((self.start, self.end))
 
     def __len__(self) -> int:
         return (self.end - self.start).days + 1
@@ -273,7 +273,7 @@ class EOEmissionCalculator(ABC):
 
     @staticmethod
     def _create_grid(region: MultiPolygon, width: float, height: float, snap: bool = False,
-                     include_center_col: bool = False, crs: str = "EPSG:4326") -> GeoDataFrame:
+                     include_center_cols: bool = False, crs: str = "EPSG:4326") -> GeoDataFrame:
         """
         Overlay given region with grid data frame. Each cell will be created as a row, starting
         at the bottom left and then moving up row by row. Thus, the last row will represent the
@@ -291,8 +291,8 @@ class EOEmissionCalculator(ABC):
             Make grid corners snap. If true, the lower left corner of the lower left cell
             will have long % width == 0 and lat % height == 0. If false, region bounds will
             be used. Defaults to False.
-        include_center_col: bool
-            Add column to data frame with cell center coordinates. Defaults to False.
+        include_center_cols: bool
+            Add lat/long columns to data frame with cell center coordinates. Defaults to False.
         crs: str
             CRS to set on the data frame. Defaults to "EPSG:4326" (WGS84)
 
@@ -312,7 +312,8 @@ class EOEmissionCalculator(ABC):
             for long in (min_long + x * width for x in range(math.ceil((max_long - min_long) / width))):
                 grid["features"].append({
                     "type": "Feature",
-                    "properties": {"center": f"{lat + height / 2}/{long + width / 2}"} if include_center_col else {},
+                    "properties": {"Center latitude [°]": f"{lat + height / 2}",
+                                   "Center longitude [°]": f"{long + width / 2}"} if include_center_cols else {},
                     "geometry": {"type": "Polygon", "coordinates": [
                         [(long, lat),
                          (long + width, lat),
