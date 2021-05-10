@@ -7,7 +7,7 @@ from shapely.geometry import shape
 
 from eocalc.context import Pollutant
 from eocalc.methods.base import DateRange
-from eocalc.methods.temis import TropomiMonthlyMeanAggregator
+from eocalc.methods.naive import TropomiMonthlyMeanAggregator
 
 
 class TestTropomiMonthlyMeanAggregatorMethods(unittest.TestCase):

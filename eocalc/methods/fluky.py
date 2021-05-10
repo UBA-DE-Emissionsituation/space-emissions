@@ -5,8 +5,6 @@ import random
 from datetime import date
 
 import geopandas
-import pyproj
-import shapely.ops
 from shapely.geometry import MultiPolygon, shape
 
 from eocalc.context import Pollutant, GNFR
@@ -46,16 +44,9 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
         return pollutant is not None
 
     def run(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
-        assert self.__class__.supports(pollutant), f"Pollutant {pollutant} not supported!"
-        assert (period.end-period.start).days >= self.__class__.minimum_period_length(), "Time span too short!"
-        assert period.start >= self.__class__.earliest_start_date(), f"Method cannot be used for period starting on {period.start}!"
-        assert period.end <= self.__class__.latest_end_date(), f"Method cannot be used for period ending on {period.end}!"
-
-        projection = pyproj.Transformer.from_crs(pyproj.CRS('EPSG:4326'), pyproj.CRS('EPSG:8857'), always_xy=True).transform
-        assert shapely.ops.transform(projection, region).area / 10**6 >= self.__class__.minimum_area_size(), "Region too small!"
-
+        self._validate(region, period, pollutant)
         self._state = Status.RUNNING
-        results = {}
+        self._progress = 0
 
         # Generate data frame with random emission values per GNFR sector
         data = self._create_gnfr_table(pollutant)
@@ -70,8 +61,5 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
                                            "Umax [%]": [data.loc["Totals"][2]],
                                            'geometry': [region]})
 
-        results[self.__class__.TOTAL_EMISSIONS_KEY] = data
-        results[self.__class__.GRIDDED_EMISSIONS_KEY] = geo_data
-
         self._state = Status.READY
-        return results
+        return {self.TOTAL_EMISSIONS_KEY: data, self.GRIDDED_EMISSIONS_KEY: geo_data}

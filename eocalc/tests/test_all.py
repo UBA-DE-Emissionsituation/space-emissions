@@ -4,7 +4,7 @@ import unittest
 from eocalc.tests.test_base import TestBaseMethods
 from eocalc.tests.test_dummy import TestDummyMethods
 from eocalc.tests.test_fluky import TestRandomMethods
-from eocalc.tests.test_temis import TestTropomiMonthlyMeanAggregatorMethods
+from eocalc.tests.test_naive import TestTropomiMonthlyMeanAggregatorMethods
 
 
 def suite():

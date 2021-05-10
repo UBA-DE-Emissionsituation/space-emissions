@@ -4,12 +4,15 @@
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 from datetime import date, timedelta
+from typing import Union
 import math
 
 import numpy as np
+import shapely
+from shapely.geometry import MultiPolygon
+from pyproj import Transformer, CRS
 from pandas import DataFrame, Series
 from geopandas import GeoDataFrame
-from shapely.geometry import MultiPolygon
 
 from eocalc.context import Pollutant, GNFR
 
@@ -24,7 +27,7 @@ class Status(Enum):
 class DateRange:
     """Represent a time span between two dates. Includes both start and end date."""
 
-    def __init__(self, start: str, end: str):
+    def __init__(self, start: Union[date, str], end: Union[date, str]):
         self.start = start
         self.end = end
 
@@ -44,7 +47,7 @@ class DateRange:
         yield from [self.start + timedelta(days=count) for count in range(len(self))]
 
     def __setattr__(self, key, value):
-        super.__setattr__(self, key, date.fromisoformat(value))
+        super.__setattr__(self, key, value if isinstance(value, date) else date.fromisoformat(value))
 
         if hasattr(self, "start") and hasattr(self, "end") and self.end < self.start:
             raise ValueError(f"Invalid date range, end ({self.end}) cannot be before start ({self.start})!")
@@ -218,6 +221,25 @@ class EOEmissionCalculator(ABC):
         """
         pass
 
+    def _validate(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant):
+        """Check inputs to run() method. Raise ValueError in case of a problem."""
+        if not self.covers(region):
+            raise ValueError("Region not covered by emission estimation method!")
+        # EPSG:4326 is the shapely default (WGS84), EPSG:8857 is the Equal earth projection
+        projection = Transformer.from_crs(CRS('EPSG:4326'), CRS('EPSG:8857'), always_xy=True).transform
+        if shapely.ops.transform(projection, region).area / 10**6 < self.minimum_area_size():
+            raise ValueError("Region too small!")
+
+        if (period.end - period.start).days < self.minimum_period_length():
+            raise ValueError(f"Time span {period} too short (minimum is {self.minimum_period_length()} days)!")
+        if period.start < self.earliest_start_date():
+            raise ValueError(f"Method cannot be used for period starting on {period.start}!")
+        if period.end > self.latest_end_date():
+            raise ValueError(f"Method cannot be used for period ending on {period.end}!")
+
+        if not self.supports(pollutant):
+            raise ValueError(f"Pollutant {pollutant.name} not supported!")
+
     @staticmethod
     def _create_gnfr_table(pollutant: Pollutant) -> DataFrame:
         """
@@ -237,7 +259,7 @@ class EOEmissionCalculator(ABC):
         """
         cols = [f"{pollutant.name} emissions [kt]", "Umin [%]", "Umax [%]"]
         return DataFrame(index=GNFR, columns=cols, data=np.nan).append(
-                    DataFrame(index=["Totals"], columns=cols, data=np.nan))
+            DataFrame(index=["Totals"], columns=cols, data=np.nan))
 
     @staticmethod
     def _combine_uncertainties(values: Series, uncertainties: Series) -> float:

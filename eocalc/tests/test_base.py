@@ -21,9 +21,11 @@ class TestBaseMethods(unittest.TestCase):
             DateRange(end="alice", start="bob")
 
         year2019 = DateRange("2019-01-01", "2019-12-31")
+        year2019b = DateRange(date.fromisoformat("2019-01-01"), date.fromisoformat("2019-12-31"))
         self.assertEqual(year2019, DateRange(end="2019-12-31", start="2019-01-01"))
         self.assertEqual(365, len(year2019))
         self.assertEqual(year2019.__str__(), "[2019-01-01 to 2019-12-31, 365 days]")
+        self.assertEqual(year2019, year2019b)
 
         year2020 = DateRange("2020-01-01", "2020-12-31")
         self.assertNotEqual(year2019, year2020)
@@ -67,6 +69,37 @@ class TestBaseMethods(unittest.TestCase):
         identical = shape({'type': 'MultiPolygon',
                       'coordinates': [[[[-180., -90.], [180., -90.], [180., 0.], [-180., 0.], [-180., -90.]]]]})
         self.assertTrue(calc.covers(identical))
+
+    def test_validate(self):
+        calc = TestEOEmissionCalculator()
+        region_covered = shape({'type': 'MultiPolygon', 'coordinates': [[[[0., 0.], [0., -1.], [-1., -1.], [-1., 0.], [0., 0.]]]]})
+        valid_period = DateRange("2019-01-01", "2019-12-31")
+        valid_pollutant = Pollutant.NH3
+
+        calc._validate(region_covered, valid_period, valid_pollutant)
+
+        # Validate region
+        region_not_covered = shape({'type': 'MultiPolygon', 'coordinates': [[[[0., 0.], [0., 1.], [1., 1.], [1., 0.], [0., 0.]]]]})
+        region_too_small = shape({'type': 'MultiPolygon', 'coordinates': [[[[0., 0.], [0., -.001], [-.001, -.001], [-.001, 0.], [0., 0.]]]]})
+
+        with self.assertRaises(ValueError):
+            calc._validate(region_not_covered, valid_period, valid_pollutant)
+        with self.assertRaises(ValueError):
+            calc._validate(region_too_small, valid_period, valid_pollutant)
+
+        # Validate region
+        with self.assertRaises(ValueError):
+            calc._validate(region_covered, DateRange("0000-01-01", "2019-12-31"), valid_pollutant)
+        with self.assertRaises(ValueError):
+            calc._validate(region_covered, DateRange("2000-01-01", "9999-12-31"), valid_pollutant)
+        with self.assertRaises(ValueError):
+            calc._validate(region_covered, DateRange("0000-01-01", "9999-12-31"), valid_pollutant)
+        with self.assertRaises(ValueError):
+            calc._validate(region_covered, DateRange("2100-01-01", "2100-01-31"), valid_pollutant)
+
+        # Validate pollutant
+        with self.assertRaises(ValueError):
+            calc._validate(region_covered, valid_period, Pollutant.NO2)
 
     def test_create_gnfr_frame(self):
         for p in Pollutant:
@@ -144,7 +177,7 @@ class TestEOEmissionCalculator(EOEmissionCalculator):
 
     @staticmethod
     def minimum_area_size() -> int:
-        return 0
+        return 42
 
     @staticmethod
     def coverage() -> MultiPolygon:
@@ -153,19 +186,19 @@ class TestEOEmissionCalculator(EOEmissionCalculator):
 
     @staticmethod
     def minimum_period_length() -> int:
-        return 0
+        return 42
 
     @staticmethod
     def earliest_start_date() -> date:
-        return date.fromisoformat("0001-01-01")
+        return date.fromisoformat("1000-01-01")
 
     @staticmethod
     def latest_end_date() -> date:
-        return date.fromisoformat("9999-12-31")
+        return date.fromisoformat("2999-12-31")
 
     @staticmethod
     def supports(pollutant: Pollutant) -> bool:
-        return pollutant is not None
+        return pollutant == Pollutant.NH3
 
     def run(self, region=None, period=None, pollutant=None) -> dict:
         return 42

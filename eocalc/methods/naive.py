@@ -13,7 +13,7 @@ from shapely.geometry import MultiPolygon, shape
 from geopandas import GeoDataFrame, overlay
 
 from eocalc.context import Pollutant
-from eocalc.methods.base import EOEmissionCalculator, DateRange
+from eocalc.methods.base import EOEmissionCalculator, DateRange, Status
 
 # Local directory we use to store downloaded and decompressed data
 LOCAL_DATA_FOLDER = "data/methods/temis/tropomi/no2/monthly_mean"
@@ -23,7 +23,7 @@ TEMIS_DOWNLOAD_URL = "https://d1qb6yzwaaq4he.cloudfront.net/tropomi/no2/%s/%s/no
 TEMIS_BIN_WIDTH = 0.125
 # TEMIS TOMS file format number of four digit values per line [1]
 TEMIS_VALUES_PER_ROW = 20
-# Uncertainty value assumed per cell (TODO find a real value here!)
+# Uncertainty value assumed per cell (TODO Use a proper/realistic value here!)
 TEMIS_CELL_UNCERTAINTY = 1000
 
 
@@ -55,7 +55,9 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
         return pollutant == Pollutant.NO2
 
     def run(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
-        # TODO Update status and progress on the way!
+        self._validate(region, period, pollutant)
+        self._state = Status.RUNNING
+        self._progress = 0  # TODO Update progress below!
 
         # 1. Overlay area given with cell matching the TEMIS data set
         grid = self._create_grid(region, TEMIS_BIN_WIDTH, TEMIS_BIN_WIDTH, snap=True, include_center_cols=True)
@@ -75,11 +77,12 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
 
         # 3. Clip to actual region and add a data frame column with each cell's size
         grid = overlay(grid, GeoDataFrame({'geometry': [region]}, crs="EPSG:4326"), how='intersection')
-        grid.insert(0, "Area [km²]", grid.to_crs(epsg=5243).area / 10 ** 6)
+        grid.insert(0, "Area [km²]", grid.to_crs(epsg=8857).area / 10 ** 6)  # Equal earth projection
 
         # 4. Update emission columns by multiplying with the area value and sum it all up
         grid.iloc[:, -(len(period)+3):-3] = grid.iloc[:, -(len(period)+3):-3].mul(grid["Area [km²]"], axis=0)
         grid.insert(1, f"Total {pollutant.name} emissions [kg]", grid.iloc[:, -(len(period)+3):-3].sum(axis=1))
+        # TODO This is slow, can we speed this up?
         cell_uncertainties = [self._combine_uncertainties(grid.iloc[row, -(len(period)+3):-3],
                                                           Series(TEMIS_CELL_UNCERTAINTY).repeat(len(period))) for row in range(len(grid))]
         grid.insert(2, "Umin [%]", cell_uncertainties)
@@ -92,7 +95,8 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
         total_uncertainty = self._combine_uncertainties(grid.iloc[:, 1], grid.iloc[:, 2])
         table.iloc[-1] = [grid.iloc[:, 1].sum() / 10**6, total_uncertainty, total_uncertainty]
 
-        return {self.__class__.TOTAL_EMISSIONS_KEY: table, self.__class__.GRIDDED_EMISSIONS_KEY: grid}
+        self._state = Status.READY
+        return {self.TOTAL_EMISSIONS_KEY: table, self.GRIDDED_EMISSIONS_KEY: grid}
 
     @staticmethod
     def _read_toms_data(region: MultiPolygon, file: str) -> ():
