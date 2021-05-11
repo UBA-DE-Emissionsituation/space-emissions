@@ -63,6 +63,8 @@ class TestTropomiMonthlyMeanAggregatorMethods(unittest.TestCase):
 
         result = TropomiMonthlyMeanAggregator().run(germany, DateRange(start='2018-08-01', end='2018-08-31'), Pollutant.NO2)
         self.assertTrue(22.5 <= result[TropomiMonthlyMeanAggregator.TOTAL_EMISSIONS_KEY].iloc[-1, 0] <= 22.6)
+        self.assertTrue(3.49 <= result[TropomiMonthlyMeanAggregator.TOTAL_EMISSIONS_KEY].iloc[-1, 1] <= 3.5)
+        self.assertTrue(3.49 <= result[TropomiMonthlyMeanAggregator.TOTAL_EMISSIONS_KEY].iloc[-1, 2] <= 3.5)
 
 
 if __name__ == '__main__':

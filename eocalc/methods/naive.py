@@ -23,6 +23,8 @@ TEMIS_DOWNLOAD_URL = "https://d1qb6yzwaaq4he.cloudfront.net/tropomi/no2/%s/%s/no
 TEMIS_BIN_WIDTH = 0.125
 # TEMIS TOMS file format number of four digit values per line [1]
 TEMIS_VALUES_PER_ROW = 20
+# TEMIS TOMS file invalid value placeholder
+TEMIS_NAN_VALUE = -999
 # Uncertainty value assumed per cell (TODO Use a proper/realistic value here!)
 TEMIS_CELL_UNCERTAINTY = 1000
 
@@ -82,13 +84,11 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
         # 4. Update emission columns by multiplying with the area value and sum it all up
         grid.iloc[:, -(len(period)+3):-3] = grid.iloc[:, -(len(period)+3):-3].mul(grid["Area [km²]"], axis=0)
         grid.insert(1, f"Total {pollutant.name} emissions [kg]", grid.iloc[:, -(len(period)+3):-3].sum(axis=1))
-        # TODO This is slow, can we speed this up?
-        cell_uncertainties = [self._combine_uncertainties(grid.iloc[row, -(len(period)+3):-3],
-                                                          Series(TEMIS_CELL_UNCERTAINTY).repeat(len(period))) for row in range(len(grid))]
-        grid.insert(2, "Umin [%]", cell_uncertainties)
-        grid.insert(3, "Umax [%]", cell_uncertainties)
+        grid.insert(2, "Umin [%]", numpy.NaN)
+        grid.insert(3, "Umax [%]", numpy.NaN)
         grid.insert(4, "Number of values [1]", len(period))
         grid.insert(5, "Missing values [1]", grid.iloc[:, -(len(period)+3):-3].isna().sum(axis=1))
+        self._calculate_row_uncertainties(grid, period)  # Replace NaNs in Umin/Umax cols with actual values
 
         # 5. Add GNFR table incl. uncertainties
         table = self._create_gnfr_table(pollutant)
@@ -118,7 +118,7 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
                     for count, long in enumerate(offset + x * TEMIS_BIN_WIDTH for x in range(TEMIS_VALUES_PER_ROW)):
                         if min_long <= long <= max_long:
                             emission = int(line[count * 4:count * 4 + 4])  # All emission values are four digits wide
-                            result += [emission] if emission >= 0 else [numpy.NaN]
+                            result += [emission] if emission > TEMIS_NAN_VALUE else [numpy.NaN]
                     offset += TEMIS_VALUES_PER_ROW * TEMIS_BIN_WIDTH
 
         return result
@@ -151,3 +151,15 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
                 # TODO Remove downloaded/intermediate files?
 
         return file
+
+    def _calculate_row_uncertainties(self, grid, period):
+        """Since the result only depends on the number of values, we can make this fast."""
+        cache = {}
+        series = Series(TEMIS_CELL_UNCERTAINTY).repeat(len(period))
+        for row in range(len(grid)):
+            value_count = grid.at[row, "Number of values [1]"] - grid.at[row, "Missing values [1]"]
+            if value_count not in cache.keys():
+                cache[value_count] = self._combine_uncertainties(grid.iloc[row, -(len(period) + 3):-3], series)
+
+            grid.at[row, "Umin [%]"] = cache[value_count]
+            grid.at[row, "Umax [%]"] = cache[value_count]

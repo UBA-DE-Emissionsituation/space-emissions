@@ -286,12 +286,12 @@ class EOEmissionCalculator(ABC):
             raise ValueError("List of values need to have the same length as the list of uncertainties.")
         elif (uncertainties.values < 0).any() or uncertainties.isnull().values.any():
             raise ValueError("All uncertainties need to be positive real numbers.")
-        elif values.sum() == 0:
+        elif values.abs().sum() == 0:
             return 0
         else:
             values = values.reset_index(drop=True)
             uncertainties = uncertainties.reset_index(drop=True)
-            return ((values.multiply(uncertainties, fill_value=0)) ** 2).sum() ** 0.5 / values.sum()
+            return ((values.abs().multiply(uncertainties, fill_value=0)) ** 2).sum() ** 0.5 / values.abs().sum()
 
     @staticmethod
     def _create_grid(region: MultiPolygon, width: float, height: float, snap: bool = False,

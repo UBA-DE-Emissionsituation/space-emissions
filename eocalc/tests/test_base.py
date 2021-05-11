@@ -110,6 +110,8 @@ class TestBaseMethods(unittest.TestCase):
     def test_combine_uncertainties(self):
         self.assertEqual(2, EOEmissionCalculator._combine_uncertainties(Series([10]), Series([2])))
         self.assertEqual(((10*2)**2+(10*4)**2)**0.5/20, EOEmissionCalculator._combine_uncertainties(Series([10, 10]), Series([2, 4])))
+        self.assertEqual(((10*2)**2+(10*4)**2)**0.5/20, EOEmissionCalculator._combine_uncertainties(Series([10, -10]), Series([2, 4])))
+        self.assertEqual(((10*2)**2+(5*4)**2)**0.5/15, EOEmissionCalculator._combine_uncertainties(Series([-10, -5]), Series([2, 4])))
 
         self.assertEqual(2, EOEmissionCalculator._combine_uncertainties(Series([10], index=['A']), Series([2], index=['A'])))
         self.assertEqual(2, EOEmissionCalculator._combine_uncertainties(Series([10], index=['A']), Series([2], index=['B'])))
