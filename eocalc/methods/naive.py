@@ -31,7 +31,7 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
 
     @staticmethod
     def minimum_area_size() -> int:
-        return 10**5
+        return 10**4
 
     @staticmethod
     def coverage() -> MultiPolygon:
