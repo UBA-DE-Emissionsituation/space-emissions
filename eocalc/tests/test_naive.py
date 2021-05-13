@@ -74,6 +74,21 @@ class TestTropomiMonthlyMeanAggregatorMethods(unittest.TestCase):
         self.assertTrue(1 <= result[TropomiMonthlyMeanAggregator.TOTAL_EMISSIONS_KEY].iloc[-1, 1] <= 1.1)
         self.assertTrue(1 <= result[TropomiMonthlyMeanAggregator.TOTAL_EMISSIONS_KEY].iloc[-1, 2] <= 1.1)
 
+    def test_read_toms_data(self):
+        region = shape(dict(type='MultiPolygon',
+                            coordinates=[[[[-122.245, 37.188], [-122.245, 37.438], [-122.12, 37.438]]]]))
+        file = "data/methods/temis/tropomi/no2/monthly_mean/no2_201808_clipped.asc"
+
+        self.assertEqual([133, 186, 189, 304, 272, 294], TropomiMonthlyMeanAggregator._read_toms_data(region, file))
+
+        other = shape(dict(type='MultiPolygon',
+                            coordinates=[[[[-179.99, 37.188], [-179.995, 37.188], [-179.995, 37.187]]]]))
+        self.assertEqual([30], TropomiMonthlyMeanAggregator._read_toms_data(other, file))
+
+        third = shape(dict(type='MultiPolygon',
+                           coordinates=[[[[179.79, 47.188], [179.995, 47.188], [179.995, 47.187]]]]))
+        self.assertEqual([69, 60], TropomiMonthlyMeanAggregator._read_toms_data(third, file))
+
 
 if __name__ == '__main__':
     unittest.main()

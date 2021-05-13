@@ -177,6 +177,11 @@ class TestBaseMethods(unittest.TestCase):
         self.assertEqual(11*12, len(EOEmissionCalculator._create_grid(third, 50, 10, snap=False)))
         self.assertEqual(12*12, len(EOEmissionCalculator._create_grid(third, 50, 10, snap=True)))
 
+        fourth = shape(dict(type='MultiPolygon',
+                           coordinates=[[[[-122.255, 37.188], [-122.255, 37.438], [-122.38, 37.438]]]]))
+        self.assertEqual(2, len(EOEmissionCalculator._create_grid(fourth, 0.125, 0.125, snap=False)))
+        self.assertEqual(6, len(EOEmissionCalculator._create_grid(fourth, 0.125, 0.125, snap=True)))
+
 
 class TestEOEmissionCalculator(EOEmissionCalculator):
 

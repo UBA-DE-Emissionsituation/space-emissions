@@ -322,12 +322,12 @@ class EOEmissionCalculator(ABC):
         """
         grid = {"type": "FeatureCollection", "features": []}
 
-        min_long, min_lat, max_long, max_lat = (
+        min_long, min_lat, max_long, max_lat = region.bounds if not snap else (
             region.bounds[0] - region.bounds[0] % width,
             region.bounds[1] - region.bounds[1] % height,
             region.bounds[2] + (width - region.bounds[2] % width if region.bounds[2] % width != 0 else 0),
             region.bounds[3] + (height - region.bounds[3] % height if region.bounds[3] % height != 0 else 0)
-        ) if snap else region.bounds
+        )
 
         for lat in (min_lat + y * height for y in range(math.ceil((max_lat - min_lat) / height))):
             for long in (min_long + x * width for x in range(math.ceil((max_long - min_long) / width))):
