@@ -4,8 +4,8 @@
 import random
 from datetime import date
 
-import geopandas
 from shapely.geometry import MultiPolygon, shape
+from geopandas import GeoDataFrame, overlay
 
 from eocalc.context import Pollutant, GNFR
 from eocalc.methods.base import DateRange
@@ -55,11 +55,18 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
         # Add totals row at the bottom
         data.loc["Totals"] = data.sum(axis=0)
 
-        # TODO Generate a proper grid here!
-        geo_data = geopandas.GeoDataFrame({f"{pollutant.name} [kt]": [data.loc["Totals"][0]],
-                                           "Umin [%]": [data.loc["Totals"][1]],
-                                           "Umax [%]": [data.loc["Totals"][2]],
-                                           'geometry': [region]})
+        self._progress = 50
 
+        # Generate bogus grid with random emission values
+        geo_data = self._create_grid(region, .1, .1, snap=False)
+        geo_data = overlay(geo_data, GeoDataFrame({'geometry': [region]}, crs="EPSG:4326"), how='intersection')
+        geo_data.insert(0, "Area [km²]", geo_data.to_crs(epsg=8857).area / 10 ** 6)  # Equal earth projection
+        geo_data.insert(1, f"Total {pollutant.name} emissions [kg]", [random.random()*100 for _ in range(len(geo_data))])
+        geo_data.insert(2, "Umin [%]", 42)
+        geo_data.insert(3, "Umax [%]", 42)
+        geo_data.insert(4, "Number of values [1]", len(period))
+        geo_data.insert(5, "Missing values [1]", 0)
+
+        self._progress = 100
         self._state = Status.READY
         return {self.TOTAL_EMISSIONS_KEY: data, self.GRIDDED_EMISSIONS_KEY: geo_data}

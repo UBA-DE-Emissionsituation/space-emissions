@@ -8,8 +8,8 @@ from typing import Union
 import math
 
 import numpy as np
-import shapely
 from shapely.geometry import MultiPolygon
+from shapely.ops import transform
 from pyproj import Transformer, CRS
 from pandas import DataFrame, Series
 from geopandas import GeoDataFrame
@@ -44,7 +44,7 @@ class DateRange:
         return (self.end - self.start).days + 1
 
     def __iter__(self):
-        yield from [self.start + timedelta(days=count) for count in range(len(self))]
+        yield from (self.start + timedelta(days=count) for count in range(len(self)))
 
     def __setattr__(self, key, value):
         super.__setattr__(self, key, value if isinstance(value, date) else date.fromisoformat(value))
@@ -227,7 +227,7 @@ class EOEmissionCalculator(ABC):
             raise ValueError("Region not covered by emission estimation method!")
         # EPSG:4326 is the shapely default (WGS84), EPSG:8857 is the Equal earth projection
         projection = Transformer.from_crs(CRS('EPSG:4326'), CRS('EPSG:8857'), always_xy=True).transform
-        if shapely.ops.transform(projection, region).area / 10**6 < self.minimum_area_size():
+        if transform(projection, region).area / 10**6 < self.minimum_area_size():
             raise ValueError("Region too small!")
 
         if (period.end - period.start).days < self.minimum_period_length():
@@ -258,7 +258,7 @@ class EOEmissionCalculator(ABC):
             Table to be filled by calculation methods.
         """
         cols = [f"{pollutant.name} emissions [kt]", "Umin [%]", "Umax [%]"]
-        return DataFrame(index=GNFR, columns=cols, data=np.nan).append(
+        return DataFrame(index=list(GNFR), columns=cols, data=np.nan).append(
             DataFrame(index=["Totals"], columns=cols, data=np.nan))
 
     @staticmethod
@@ -280,18 +280,15 @@ class EOEmissionCalculator(ABC):
         float
             Combined uncertainty.
         """
-        if len(values) == 0 or len(uncertainties) == 0:
-            raise ValueError("Neither values nor uncertainties may be empty.")
-        elif len(values) != len(uncertainties):
-            raise ValueError("List of values need to have the same length as the list of uncertainties.")
-        elif (uncertainties.values < 0).any() or uncertainties.isnull().values.any():
-            raise ValueError("All uncertainties need to be positive real numbers.")
-        elif values.abs().sum() == 0:
+        if sum(values.abs().dropna()) == 0:
             return 0
+        elif len(values) > len(uncertainties):
+            raise ValueError("List of uncertainties needs to have at least as many items as the list of values.")
+        elif any(uncertainties < 0) or any(uncertainties.isnull()):
+            raise ValueError("All uncertainties need to be positive numbers.")
         else:
-            values = values.reset_index(drop=True)
-            uncertainties = uncertainties.reset_index(drop=True)
-            return ((values.abs().multiply(uncertainties, fill_value=0)) ** 2).sum() ** 0.5 / values.abs().sum()
+            values, uncertainties = values.reset_index(drop=True), uncertainties.reset_index(drop=True)
+            return (values.abs().multiply(uncertainties, fill_value=0) ** 2).sum() ** 0.5 / values.abs().sum()
 
     @staticmethod
     def _create_grid(region: MultiPolygon, width: float, height: float, snap: bool = False,
@@ -325,10 +322,12 @@ class EOEmissionCalculator(ABC):
         """
         grid = {"type": "FeatureCollection", "features": []}
 
-        min_lat = region.bounds[1] - region.bounds[1] % height if snap else region.bounds[1]
-        max_lat = region.bounds[3] + region.bounds[3] % height if snap else region.bounds[3]
-        min_long = region.bounds[0] - region.bounds[0] % width if snap else region.bounds[0]
-        max_long = region.bounds[2] + region.bounds[2] % width if snap else region.bounds[2]
+        min_long, min_lat, max_long, max_lat = (
+            region.bounds[0] - region.bounds[0] % width,
+            region.bounds[1] - region.bounds[1] % height,
+            region.bounds[2] + (width - region.bounds[2] % width if region.bounds[2] % width != 0 else 0),
+            region.bounds[3] + (height - region.bounds[3] % height if region.bounds[3] % height != 0 else 0)
+        ) if snap else region.bounds
 
         for lat in (min_lat + y * height for y in range(math.ceil((max_lat - min_lat) / height))):
             for long in (min_long + x * width for x in range(math.ceil((max_long - min_long) / width))):

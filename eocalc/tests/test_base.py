@@ -106,12 +106,19 @@ class TestBaseMethods(unittest.TestCase):
             frame = EOEmissionCalculator._create_gnfr_table(p)
             self.assertEqual(len(GNFR) + 1, len(frame))
             self.assertEqual(3, len(frame.columns))
+            self.assertEqual("A_PublicPower", frame.iloc[0].name.name)
+            self.assertEqual("Totals", frame.iloc[-1].name)
+            self.assertTrue(frame.iloc[:, 0].name.startswith(p.name))
+            self.assertTrue(frame.iloc[:, 1].name.startswith("Umin"))
+            self.assertTrue(frame.iloc[:, 2].name.startswith("Umax"))
 
     def test_combine_uncertainties(self):
         self.assertEqual(2, EOEmissionCalculator._combine_uncertainties(Series([10]), Series([2])))
         self.assertEqual(((10*2)**2+(10*4)**2)**0.5/20, EOEmissionCalculator._combine_uncertainties(Series([10, 10]), Series([2, 4])))
         self.assertEqual(((10*2)**2+(10*4)**2)**0.5/20, EOEmissionCalculator._combine_uncertainties(Series([10, -10]), Series([2, 4])))
         self.assertEqual(((10*2)**2+(5*4)**2)**0.5/15, EOEmissionCalculator._combine_uncertainties(Series([-10, -5]), Series([2, 4])))
+        self.assertEqual(((10*3)**2+(5*3)**2)**0.5/15,
+                         EOEmissionCalculator._combine_uncertainties(Series([-10, -5]), Series(3 for _ in range(2))))
 
         self.assertEqual(2, EOEmissionCalculator._combine_uncertainties(Series([10], index=['A']), Series([2], index=['A'])))
         self.assertEqual(2, EOEmissionCalculator._combine_uncertainties(Series([10], index=['A']), Series([2], index=['B'])))
@@ -120,13 +127,12 @@ class TestBaseMethods(unittest.TestCase):
                          EOEmissionCalculator._combine_uncertainties(Series([10, numpy.nan, 10]), Series([2, 3, 4])))
         self.assertEqual(((10 * 2) ** 2) ** 0.5 / 10,
                          EOEmissionCalculator._combine_uncertainties(Series([10, numpy.nan, numpy.nan]), Series([2, 3, 4])))
-        self.assertEqual(0,
-                         EOEmissionCalculator._combine_uncertainties(Series([numpy.nan, numpy.nan, numpy.nan]), Series([2, 3, 4])))
+        self.assertEqual(0, EOEmissionCalculator._combine_uncertainties(Series([numpy.nan, numpy.nan, numpy.nan]), Series([2, 3, 4])))
 
-        with self.assertRaises(ValueError):
-            EOEmissionCalculator._combine_uncertainties(Series([]), Series([]))
-        with self.assertRaises(ValueError):
-            EOEmissionCalculator._combine_uncertainties(Series([]), Series([2]))
+        self.assertEqual(0, EOEmissionCalculator._combine_uncertainties(Series([]), Series([])))
+        self.assertEqual(0, EOEmissionCalculator._combine_uncertainties(Series([]), Series([2])))
+        self.assertEqual(((10 * 2) ** 2 + (20 * 3) ** 2) ** 0.5 / 30,
+                         EOEmissionCalculator._combine_uncertainties(Series([10, 20]), Series([2, 3, 4])))
         with self.assertRaises(ValueError):
             EOEmissionCalculator._combine_uncertainties(Series([10, 20]), Series([2]))
         with self.assertRaises(ValueError):
@@ -160,7 +166,7 @@ class TestBaseMethods(unittest.TestCase):
         self.assertEqual(4, len(EOEmissionCalculator._create_grid(other, 1, 0.5, snap=True)))
         self.assertEqual(4, len(EOEmissionCalculator._create_grid(other, 0.5, 0.5, snap=False)))
         self.assertEqual(4, len(EOEmissionCalculator._create_grid(other, 0.5, 0.5, snap=True)))
-        self.assertEqual(25, len(EOEmissionCalculator._create_grid(other, 0.3, 0.3, snap=True)))
+        self.assertEqual(16, len(EOEmissionCalculator._create_grid(other, 0.3, 0.3, snap=True)))
         self.assertEqual(16, len(EOEmissionCalculator._create_grid(other, 0.3, 0.3, snap=False)))
 
         third = shape(dict(type='MultiPolygon',

@@ -66,6 +66,14 @@ class TestTropomiMonthlyMeanAggregatorMethods(unittest.TestCase):
         self.assertTrue(3.49 <= result[TropomiMonthlyMeanAggregator.TOTAL_EMISSIONS_KEY].iloc[-1, 1] <= 3.5)
         self.assertTrue(3.49 <= result[TropomiMonthlyMeanAggregator.TOTAL_EMISSIONS_KEY].iloc[-1, 2] <= 3.5)
 
+        with open("data/regions/europe.geo.json", 'r') as geojson_file:
+            europe = shape(json.load(geojson_file)["geometry"])
+
+        result = TropomiMonthlyMeanAggregator().run(europe, DateRange(start='2020-02-10', end='2020-02-25'), Pollutant.NO2)
+        self.assertTrue(187 <= result[TropomiMonthlyMeanAggregator.TOTAL_EMISSIONS_KEY].iloc[-1, 0] <= 188)
+        self.assertTrue(1 <= result[TropomiMonthlyMeanAggregator.TOTAL_EMISSIONS_KEY].iloc[-1, 1] <= 1.1)
+        self.assertTrue(1 <= result[TropomiMonthlyMeanAggregator.TOTAL_EMISSIONS_KEY].iloc[-1, 2] <= 1.1)
+
 
 if __name__ == '__main__':
     unittest.main()

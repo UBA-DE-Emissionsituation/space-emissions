@@ -61,7 +61,7 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
         self._state = Status.RUNNING
         self._progress = 0  # TODO Update progress below!
 
-        # 1. Overlay area given with cell matching the TEMIS data set
+        # 1. Overlay area given with cells matching the TEMIS data set
         grid = self._create_grid(region, TEMIS_BIN_WIDTH, TEMIS_BIN_WIDTH, snap=True, include_center_cols=True)
 
         # 2. Read TEMIS data into the grid, use cache to avoid re-reading the file for each day individually
@@ -100,11 +100,9 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
 
     @staticmethod
     def _read_toms_data(region: MultiPolygon, file: str) -> ():
-        # TODO Do we need to make this work with regions wrapping around to long < -180 or long > 180?
-        min_lat = region.bounds[1] - region.bounds[1] % TEMIS_BIN_WIDTH
-        max_lat = region.bounds[3] + region.bounds[3] % TEMIS_BIN_WIDTH
-        min_long = region.bounds[0] - region.bounds[0] % TEMIS_BIN_WIDTH
-        max_long = region.bounds[2] + region.bounds[2] % TEMIS_BIN_WIDTH
+        # TODO Make this work with regions wrapping around to long < -180 or long > 180?
+        min_lat, max_lat = region.bounds[1] - region.bounds[1] % TEMIS_BIN_WIDTH, region.bounds[3]
+        min_long, max_long = region.bounds[0] - region.bounds[0] % TEMIS_BIN_WIDTH,  region.bounds[2]
 
         result = []
 
@@ -114,9 +112,9 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
                 if line.startswith("lat="):
                     lat = float(line.split('=')[1]) - TEMIS_BIN_WIDTH / 2
                     offset = -180  # We need to go from -180° to +180° for each latitude
-                elif min_lat <= lat <= max_lat and line[:4].strip().lstrip('-').isdigit():
+                elif min_lat <= lat < max_lat and line[:4].strip().lstrip('-').isdigit():
                     for count, long in enumerate(offset + x * TEMIS_BIN_WIDTH for x in range(TEMIS_VALUES_PER_ROW)):
-                        if min_long <= long <= max_long:
+                        if min_long <= long < max_long:
                             emission = int(line[count * 4:count * 4 + 4])  # All emission values are four digits wide
                             result += [emission] if emission > TEMIS_NAN_VALUE else [numpy.NaN]
                     offset += TEMIS_VALUES_PER_ROW * TEMIS_BIN_WIDTH
@@ -155,11 +153,11 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
     def _calculate_row_uncertainties(self, grid, period):
         """Since the result only depends on the number of values, we can make this fast."""
         cache = {}
-        series = Series(TEMIS_CELL_UNCERTAINTY).repeat(len(period))
+        uncertainties = Series(TEMIS_CELL_UNCERTAINTY for _ in range(len(period)))
+
         for row in range(len(grid)):
             value_count = grid.at[row, "Number of values [1]"] - grid.at[row, "Missing values [1]"]
             if value_count not in cache.keys():
-                cache[value_count] = self._combine_uncertainties(grid.iloc[row, -(len(period) + 3):-3], series)
+                cache[value_count] = self._combine_uncertainties(grid.iloc[row, -(len(period) + 3):-3], uncertainties)
 
-            grid.at[row, "Umin [%]"] = cache[value_count]
-            grid.at[row, "Umax [%]"] = cache[value_count]
+            grid.at[row, "Umin [%]"] = grid.at[row, "Umax [%]"] = cache[value_count]
