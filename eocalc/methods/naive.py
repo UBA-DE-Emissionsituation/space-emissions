@@ -66,7 +66,7 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
 
         # 2. Read TEMIS data into the grid, use cache to avoid re-reading the file for each day individually
         cache = {}
-        for day in period:
+        for column, day in enumerate(period):
             month_cache_key = f"{day:%Y-%m}"
             if month_cache_key not in cache.keys():
                 concentrations = self._read_toms_data(region, self._assure_data_availability(day))
@@ -75,10 +75,10 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
                 # TODO Correct for pollutant atmosphere lifetime and diurnal variation: pollutant.atmo_lifetime(day, latitude) * pollutant.diurnal_variation(day, instrument)
 
             # Here, values are actually [kg/km²], but the area [km²] cancels out below
-            grid.insert(0, f"{day} {pollutant.name} emissions [kg]", cache[month_cache_key])
+            grid.insert(column, f"{day} {pollutant.name} emissions [kg]", cache[month_cache_key])
 
         # 3. Clip to actual region and add a data frame column with each cell's size
-        grid = overlay(grid, GeoDataFrame({'geometry': [region]}, crs="EPSG:4326"), how='intersection')
+        grid = overlay(grid, GeoDataFrame({"geometry": [region]}, crs="EPSG:4326"), how="intersection")
         grid.insert(0, "Area [km²]", grid.to_crs(epsg=8857).area / 10 ** 6)  # Equal earth projection
 
         # 4. Update emission columns by multiplying with the area value and sum it all up
@@ -153,7 +153,7 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
     def _calculate_row_uncertainties(self, grid, period):
         """Since the result only depends on the number of values, we can make this fast."""
         cache = {}
-        uncertainties = Series(TEMIS_CELL_UNCERTAINTY for _ in range(len(period)))
+        uncertainties = Series([TEMIS_CELL_UNCERTAINTY] * len(period))
 
         for row in range(len(grid)):
             value_count = grid.at[row, "Number of values [1]"] - grid.at[row, "Missing values [1]"]

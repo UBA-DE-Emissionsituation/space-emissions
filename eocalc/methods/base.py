@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from enum import Enum, auto
 from datetime import date, timedelta
 from typing import Union
-
+import math
 
 import numpy as np
 from shapely.geometry import MultiPolygon
@@ -226,7 +226,7 @@ class EOEmissionCalculator(ABC):
         if not self.covers(region):
             raise ValueError("Region not covered by emission estimation method!")
         # EPSG:4326 is the shapely default (WGS84), EPSG:8857 is the Equal earth projection
-        projection = Transformer.from_crs(CRS('EPSG:4326'), CRS('EPSG:8857'), always_xy=True).transform
+        projection = Transformer.from_crs(CRS("EPSG:4326"), CRS("EPSG:8857"), always_xy=True).transform
         if transform(projection, region).area / 10**6 < self.minimum_area_size():
             raise ValueError("Region too small!")
 
@@ -284,11 +284,11 @@ class EOEmissionCalculator(ABC):
             return 0
         elif len(values) > len(uncertainties):
             raise ValueError("List of uncertainties needs to have at least as many items as the list of values.")
-        elif any(uncertainties < 0) or any(uncertainties.isnull()):
-            raise ValueError("All uncertainties need to be positive numbers.")
+        elif any(uncertainties.isnull()):
+            raise ValueError("All uncertainties need to be numbers.")
         else:
             values, uncertainties = values.reset_index(drop=True), uncertainties.reset_index(drop=True)
-            return (values.abs().multiply(uncertainties, fill_value=0) ** 2).sum() ** 0.5 / values.abs().sum()
+            return (values.multiply(uncertainties, fill_value=0) ** 2).sum() ** 0.5 / values.abs().sum()
 
     @staticmethod
     def _create_grid(region: MultiPolygon, width: float, height: float, snap: bool = False,
@@ -329,8 +329,8 @@ class EOEmissionCalculator(ABC):
             region.bounds[3] + (height - region.bounds[3] % height if region.bounds[3] % height != 0 else 0)
         )
 
-        for lat in (min_lat + y * height for y in range(np.ceil((max_lat - min_lat) / height))):
-            for long in (min_long + x * width for x in range(np.ceil((max_long - min_long) / width))):
+        for lat in (min_lat + y * height for y in range(math.ceil((max_lat - min_lat) / height))):
+            for long in (min_long + x * width for x in range(math.ceil((max_long - min_long) / width))):
                 grid["features"].append({
                     "type": "Feature",
                     "properties": {"Center latitude [°]": f"{lat + height / 2}",

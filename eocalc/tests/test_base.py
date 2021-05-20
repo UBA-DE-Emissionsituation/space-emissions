@@ -115,8 +115,8 @@ class TestBaseMethods(unittest.TestCase):
     def test_combine_uncertainties(self):
         self.assertEqual(2, EOEmissionCalculator._combine_uncertainties(Series([10]), Series([2])))
         self.assertEqual(((10*2)**2+(10*4)**2)**0.5/20, EOEmissionCalculator._combine_uncertainties(Series([10, 10]), Series([2, 4])))
-        self.assertEqual(((10*2)**2+(10*4)**2)**0.5/20, EOEmissionCalculator._combine_uncertainties(Series([10, -10]), Series([2, 4])))
-        self.assertEqual(((10*2)**2+(5*4)**2)**0.5/15, EOEmissionCalculator._combine_uncertainties(Series([-10, -5]), Series([2, 4])))
+        self.assertEqual(((10*2)**2+(10*4)**2)**0.5/20, EOEmissionCalculator._combine_uncertainties(Series([10, -10]), Series([-2, 4])))
+        self.assertEqual(((10*2)**2+(5*4)**2)**0.5/15, EOEmissionCalculator._combine_uncertainties(Series([-10, -5]), Series([-2, -4])))
         self.assertEqual(((10*3)**2+(5*3)**2)**0.5/15,
                          EOEmissionCalculator._combine_uncertainties(Series([-10, -5]), Series(3 for _ in range(2))))
 
@@ -135,8 +135,6 @@ class TestBaseMethods(unittest.TestCase):
                          EOEmissionCalculator._combine_uncertainties(Series([10, 20]), Series([2, 3, 4])))
         with self.assertRaises(ValueError):
             EOEmissionCalculator._combine_uncertainties(Series([10, 20]), Series([2]))
-        with self.assertRaises(ValueError):
-            EOEmissionCalculator._combine_uncertainties(Series([10, 20]), Series([2, -4]))
         with self.assertRaises(ValueError):
             EOEmissionCalculator._combine_uncertainties(Series([10, 20]), Series([2, numpy.nan]))
 
