@@ -4,12 +4,8 @@
 import random
 from datetime import date
 
-from pandas import DataFrame
-
-import geopandas
-import pyproj
-import shapely.ops
 from shapely.geometry import MultiPolygon, shape
+from geopandas import GeoDataFrame, overlay
 
 from eocalc.context import Pollutant, GNFR
 from eocalc.methods.base import DateRange
@@ -48,33 +44,29 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
         return pollutant is not None
 
     def run(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
-        assert self.__class__.supports(pollutant), f"Pollutant {pollutant} not supported!"
-        assert (period.end-period.start).days >= self.__class__.minimum_period_length(), "Time span too short!"
-        assert period.start >= self.__class__.earliest_start_date(), f"Method cannot be used for period starting on {period.start}!"
-        assert period.end <= self.__class__.latest_end_date(), f"Method cannot be used for period ending on {period.end}!"
-
-        projection = pyproj.Transformer.from_crs(pyproj.CRS('EPSG:4326'), pyproj.CRS('EPSG:8857'), always_xy=True).transform
-        assert shapely.ops.transform(projection, region).area / 10**6 >= self.__class__.minimum_area_size(), "Region too small!"
-
+        self._validate(region, period, pollutant)
         self._state = Status.RUNNING
-        results = {}
+        self._progress = 0
 
         # Generate data frame with random emission values per GNFR sector
-        data = DataFrame(index=GNFR,
-                         columns=[f"{pollutant.name} [kt]", "Umin [%]", "Umax [%]"])
+        data = self._create_gnfr_table(pollutant)
         for sector in GNFR:
             data.loc[sector] = [random.random()*100, random.random()*18, random.random()*22]
         # Add totals row at the bottom
         data.loc["Totals"] = data.sum(axis=0)
 
-        # Generate one-line geo data frame
-        geo_data = geopandas.GeoDataFrame({f"{pollutant.name} [kt]": [data.loc["Totals"][0]],
-                                           "Umin [%]": [data.loc["Totals"][1]],
-                                           "Umax [%]": [data.loc["Totals"][2]],
-                                           'geometry': [region]})
+        self._progress = 50
 
-        results[self.__class__.TOTAL_EMISSIONS_KEY] = data
-        results[self.__class__.GRIDDED_EMISSIONS_KEY] = geo_data
+        # Generate bogus grid with random emission values
+        geo_data = self._create_grid(region, .1, .1, snap=False)
+        geo_data = overlay(geo_data, GeoDataFrame({'geometry': [region]}, crs="EPSG:4326"), how='intersection')
+        geo_data.insert(0, "Area [km²]", geo_data.to_crs(epsg=8857).area / 10 ** 6)  # Equal earth projection
+        geo_data.insert(1, f"Total {pollutant.name} emissions [kg]", [random.random()*100 for _ in range(len(geo_data))])
+        geo_data.insert(2, "Umin [%]", 42)
+        geo_data.insert(3, "Umax [%]", 42)
+        geo_data.insert(4, "Number of values [1]", len(period))
+        geo_data.insert(5, "Missing values [1]", 0)
 
+        self._progress = 100
         self._state = Status.READY
-        return results
+        return {self.TOTAL_EMISSIONS_KEY: data, self.GRIDDED_EMISSIONS_KEY: geo_data}

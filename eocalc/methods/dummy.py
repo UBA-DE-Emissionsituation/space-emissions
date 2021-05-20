@@ -44,11 +44,11 @@ class DummyEOEmissionCalculator(EOEmissionCalculator):
     def run(self, region=None, period=None, pollutant=None) -> dict:
         self._state = Status.RUNNING
         self._progress = 20
-        time.sleep(1)
+        time.sleep(.3)
         self._progress = 50
-        time.sleep(1)
+        time.sleep(.3)
         self._progress = 80
-        time.sleep(1)
+        time.sleep(.3)
         self._progress = 0
         self._state = Status.READY
         return 42

@@ -41,7 +41,7 @@ class TestRandomMethods(unittest.TestCase):
             results = RandomEOEmissionCalculator().run(region, period, p)
             self.assertIsNotNone(results[RandomEOEmissionCalculator.TOTAL_EMISSIONS_KEY])
             self.assertIsNotNone(results[RandomEOEmissionCalculator.GRIDDED_EMISSIONS_KEY])
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(AttributeError):
             RandomEOEmissionCalculator().run(region, period, None)
 
 
