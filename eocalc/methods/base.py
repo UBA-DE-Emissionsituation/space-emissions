@@ -200,7 +200,7 @@ class EOEmissionCalculator(ABC):
         pass
 
     @abstractmethod
-    def run(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
+    def run(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict[str, DataFrame]:
         """
         Run method for given input and return the derived emission values.
 

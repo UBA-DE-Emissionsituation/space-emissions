@@ -40,5 +40,5 @@ class GNFR(Enum):
     P_IntShipping = auto()
     z_Memo = auto()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
