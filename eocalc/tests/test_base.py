@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
+import pytest
 from datetime import date
 
 import numpy
@@ -10,49 +11,78 @@ from eocalc.context import Pollutant, GNFR
 from eocalc.methods.base import DateRange, EOEmissionCalculator
 
 
-class TestBaseMethods(unittest.TestCase):
+class TestDataRange:
 
-    def test_date_range(self):
-        with self.assertRaises(TypeError):
+    @pytest.fixture
+    def year_2019_from_strs(self):
+        return DateRange("2019-01-01", "2019-12-31")
+
+    @pytest.fixture
+    def year_2019_from_dates(self):
+        return DateRange(date.fromisoformat("2019-01-01"), date.fromisoformat("2019-12-31"))
+
+    @pytest.fixture
+    def year_2020(self):
+        return DateRange("2020-01-01", "2020-12-31")
+
+    @pytest.fixture
+    def year_2020_other(self):
+        return DateRange("2020-01-01", "2020-12-31")
+
+    @pytest.fixture
+    def august_2018(self):
+        return DateRange("2018-08-01", "2018-08-31")
+
+    @pytest.fixture
+    def one_day(self):
+        return DateRange("2018-08-01", "2018-08-01")
+
+    def test_equals(self, year_2019_from_strs, year_2019_from_dates, year_2020, year_2020_other):
+        assert year_2019_from_strs == DateRange(end="2019-12-31", start="2019-01-01")
+        assert year_2019_from_dates == DateRange(end="2019-12-31", start="2019-01-01")
+        assert year_2020 != DateRange(end="2019-12-31", start="2019-01-01")
+        assert year_2020 != year_2019_from_dates
+        assert year_2020 != year_2019_from_strs
+        assert year_2020 == year_2020_other
+
+    def test_period_length(self, year_2019_from_dates, year_2020, august_2018, one_day):
+        assert 365 == len(year_2019_from_dates)
+        assert 366 == len(year_2020)
+        assert 31 == len(august_2018)
+        assert 1 == len(one_day)
+
+    def test_to_string(self, year_2019_from_strs):
+        assert str(year_2019_from_strs) == "[2019-01-01 to 2019-12-31, 365 days]"
+
+    def test_hash(self, year_2019_from_dates, year_2020, year_2020_other):
+        assert hash(year_2019_from_dates) != hash(year_2020)
+        assert hash(year_2020) == hash(year_2020_other)
+
+    def test_iter(self, august_2018):
+        count = 0
+        for _ in august_2018:
+            count += 1
+
+        assert 31 == count
+
+    def test_invalid_init_input(self):
+        with pytest.raises(TypeError):
             DateRange()
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             DateRange(1, "")
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             DateRange(end="alice", start="bob")
 
-        year2019 = DateRange("2019-01-01", "2019-12-31")
-        year2019b = DateRange(date.fromisoformat("2019-01-01"), date.fromisoformat("2019-12-31"))
-        self.assertEqual(year2019, DateRange(end="2019-12-31", start="2019-01-01"))
-        self.assertEqual(365, len(year2019))
-        self.assertEqual(year2019.__str__(), "[2019-01-01 to 2019-12-31, 365 days]")
-        self.assertEqual(year2019, year2019b)
-
-        year2020 = DateRange("2020-01-01", "2020-12-31")
-        self.assertNotEqual(year2019, year2020)
-        self.assertEqual(366, len(year2020))
-        year2020b = DateRange("2020-01-01", "2020-12-31")
-        self.assertEqual(year2020, year2020b)
-
-        self.assertNotEqual(hash(year2019), hash(year2020))
-        self.assertEqual(hash(year2020), hash(year2020b))
-
-        august = DateRange("2018-08-01", "2018-08-31")
-        self.assertEqual(31, len(august))
-
-        count = 0
-        for _ in august:
-            count += 1
-        self.assertEqual(31, count)
-
-        one_day = DateRange("2018-08-01", "2018-08-01")
-        self.assertEqual(1, len(one_day))
-
-        with self.assertRaises(ValueError):
+    def test_bad_period(self):
+        with pytest.raises(ValueError):
             DateRange(start="2019-01-01", end="2018-12-31")
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             DateRange(start="2019-01-01", end="2019-12-31").end = "2018-12-31"
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             DateRange(start="2019-01-01", end="2019-12-31").start = "2020-12-31"
+
+
+class TestBaseMethods(unittest.TestCase):
 
     def test_covers(self):
         calc = TestEOEmissionCalculator()
