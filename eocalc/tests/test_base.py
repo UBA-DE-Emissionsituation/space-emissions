@@ -10,31 +10,37 @@ from eocalc.context import Pollutant, GNFR
 from eocalc.methods.base import DateRange, EOEmissionCalculator
 
 
+@pytest.fixture
+def year_2019_from_strs():
+    return DateRange("2019-01-01", "2019-12-31")
+
+
+@pytest.fixture
+def year_2019_from_dates():
+    return DateRange(date.fromisoformat("2019-01-01"), date.fromisoformat("2019-12-31"))
+
+
+@pytest.fixture
+def year_2020():
+    return DateRange("2020-01-01", "2020-12-31")
+
+
+@pytest.fixture
+def year_2020_other():
+    return DateRange("2020-01-01", "2020-12-31")
+
+
+@pytest.fixture
+def august_2018():
+    return DateRange("2018-08-01", "2018-08-31")
+
+
+@pytest.fixture
+def one_day():
+    return DateRange("2018-08-01", "2018-08-01")
+
+
 class TestDataRange:
-
-    @pytest.fixture
-    def year_2019_from_strs(self):
-        return DateRange("2019-01-01", "2019-12-31")
-
-    @pytest.fixture
-    def year_2019_from_dates(self):
-        return DateRange(date.fromisoformat("2019-01-01"), date.fromisoformat("2019-12-31"))
-
-    @pytest.fixture
-    def year_2020(self):
-        return DateRange("2020-01-01", "2020-12-31")
-
-    @pytest.fixture
-    def year_2020_other(self):
-        return DateRange("2020-01-01", "2020-12-31")
-
-    @pytest.fixture
-    def august_2018(self):
-        return DateRange("2018-08-01", "2018-08-31")
-
-    @pytest.fixture
-    def one_day(self):
-        return DateRange("2018-08-01", "2018-08-01")
 
     def test_equals(self, year_2019_from_strs, year_2019_from_dates, year_2020, year_2020_other):
         assert year_2019_from_strs == DateRange(end="2019-12-31", start="2019-01-01")
@@ -81,121 +87,138 @@ class TestDataRange:
             DateRange(start="2019-01-01", end="2019-12-31").start = "2020-12-31"
 
 
+@pytest.fixture
+def calc():
+    class MyEOEmissionCalculator(EOEmissionCalculator):
+
+        @staticmethod
+        def minimum_area_size() -> int:
+            return 42
+
+        @staticmethod
+        def coverage() -> MultiPolygon:
+            return shape({"type": "MultiPolygon",
+                          "coordinates": [[[[-180., -90.], [180., -90.], [180., 0.], [-180., 0.], [-180., -90.]]]]})
+
+        @staticmethod
+        def minimum_period_length() -> int:
+            return 42
+
+        @staticmethod
+        def earliest_start_date() -> date:
+            return date.fromisoformat("1000-01-01")
+
+        @staticmethod
+        def latest_end_date() -> date:
+            return date.fromisoformat("2999-12-31")
+
+        @staticmethod
+        def supports(pollutant: Pollutant) -> bool:
+            return pollutant == Pollutant.NH3
+
+        def run(self, region=None, period=None, pollutant=None) -> dict:
+            return 42
+
+    return MyEOEmissionCalculator()
+
+
+@pytest.fixture
+def region_sample_south():
+    return shape({"type": "MultiPolygon",
+                  "coordinates": [[[[-110., -20.], [140., -20.], [180., -40.], [-180., -30.], [-110., -20.]]]]})
+
+
+@pytest.fixture
+def region_sample_north():
+    return shape({"type": "MultiPolygon",
+                  "coordinates": [[[[-110., 20.], [140., 20.], [180., 40.], [-180., 30.], [-110., 20.]]]]})
+
+
+@pytest.fixture
+def region_sample_span_equator():
+    return shape({"type": "MultiPolygon",
+                  "coordinates": [[[[-110., 20.], [140., -20.], [180., -40.], [-180., -30.], [-110., 20.]]]]})
+
+
+@pytest.fixture
+def region_clone_coverage():
+    return shape({"type": "MultiPolygon",
+                  "coordinates": [[[[-180., -90.], [180., -90.], [180., 0.], [-180., 0.], [-180., -90.]]]]})
+
+
+@pytest.fixture
+def region_other_covered():
+    return shape({"type": "MultiPolygon",
+                  "coordinates": [[[[0., 0.], [0., -1.], [-1., -1.], [-1., 0.], [0., 0.]]]]})
+
+
+@pytest.fixture
+def region_other_not_covered():
+    return shape({"type": "MultiPolygon",
+                  "coordinates": [[[[0., 0.], [0., 1.], [1., 1.], [1., 0.], [0., 0.]]]]})
+
+
+@pytest.fixture
+def region_too_small_but_covered():
+    return shape({"type": "MultiPolygon",
+                  "coordinates": [[[[0., 0.], [0., -.001], [-.001, -.001], [-.001, 0.], [0., 0.]]]]})
+
+
+@pytest.fixture
+def region_box_north_of_equator():
+    return shape({"type": "MultiPolygon",
+                  "coordinates": [[[[0., 0.], [0., 1.], [1., 1.], [1., 0.], [0., 0.]]]]})
+
+
+@pytest.fixture
+def region_box_span_equator():
+    return shape({"type": "MultiPolygon",
+                  "coordinates": [[[[-0.5, -0.5], [-0.5, 0.5], [0.5, 0.5], [0.5, -0.5], [-0.5, -0.5]]]]})
+
+
+@pytest.fixture
+def region_far_out_at_the_date_line():
+    return shape({"type": "MultiPolygon",
+                  "coordinates": [[[[-202, -90], [-202, 22], [301, 22], [301, -90], [-202, -90]]]]})
+
+
+@pytest.fixture
+def region_small_but_well_known():
+    return shape({"type": "MultiPolygon",
+                  "coordinates": [[[[-122.255, 37.188], [-122.255, 37.438], [-122.38, 37.438]]]]})
+
+
+@pytest.fixture
+def period_supported():
+    return DateRange("2019-01-01", "2019-12-31")
+
+
+@pytest.fixture
+def period_not_supported():
+    return DateRange("0001-01-01", "2019-12-31")
+
+
+@pytest.fixture
+def period_not_supported_other():
+    return DateRange("2000-01-01", "9999-12-31")
+
+
+@pytest.fixture
+def period_too_short():
+    return DateRange("2100-01-01", "2100-01-31")
+
+
+@pytest.fixture
+def pollutant_supported():
+    return Pollutant.NH3
+
+
+@pytest.fixture
+def pollutant_not_supported():
+    return Pollutant.NO2
+
+
 class TestCalcMethods:
-
-    @pytest.fixture
-    def calc(self):
-
-        class MyEOEmissionCalculator(EOEmissionCalculator):
-
-            @staticmethod
-            def minimum_area_size() -> int:
-                return 42
-
-            @staticmethod
-            def coverage() -> MultiPolygon:
-                return shape({"type": "MultiPolygon",
-                              "coordinates": [[[[-180., -90.], [180., -90.], [180., 0.], [-180., 0.], [-180., -90.]]]]})
-
-            @staticmethod
-            def minimum_period_length() -> int:
-                return 42
-
-            @staticmethod
-            def earliest_start_date() -> date:
-                return date.fromisoformat("1000-01-01")
-
-            @staticmethod
-            def latest_end_date() -> date:
-                return date.fromisoformat("2999-12-31")
-
-            @staticmethod
-            def supports(pollutant: Pollutant) -> bool:
-                return pollutant == Pollutant.NH3
-
-            def run(self, region=None, period=None, pollutant=None) -> dict:
-                return 42
-
-        return MyEOEmissionCalculator()
-
-    @pytest.fixture
-    def region_sample_south(self):
-        return shape({"type": "MultiPolygon",
-                      "coordinates": [[[[-110., -20.], [140., -20.], [180., -40.], [-180., -30.], [-110., -20.]]]]})
-
-    @pytest.fixture
-    def region_sample_north(self):
-        return shape({"type": "MultiPolygon",
-                      "coordinates": [[[[-110., 20.], [140., 20.], [180., 40.], [-180., 30.], [-110., 20.]]]]})
-
-    @pytest.fixture
-    def region_sample_span_equator(self):
-        return shape({"type": "MultiPolygon",
-                      "coordinates": [[[[-110., 20.], [140., -20.], [180., -40.], [-180., -30.], [-110., 20.]]]]})
-
-    @pytest.fixture
-    def region_clone_coverage(self):
-        return shape({"type": "MultiPolygon",
-                      "coordinates": [[[[-180., -90.], [180., -90.], [180., 0.], [-180., 0.], [-180., -90.]]]]})
-
-    @pytest.fixture
-    def region_other_covered(self):
-        return shape({"type": "MultiPolygon",
-                      "coordinates": [[[[0., 0.], [0., -1.], [-1., -1.], [-1., 0.], [0., 0.]]]]})
-
-    @pytest.fixture
-    def region_other_not_covered(self):
-        return shape({"type": "MultiPolygon",
-                      "coordinates": [[[[0., 0.], [0., 1.], [1., 1.], [1., 0.], [0., 0.]]]]})
-
-    @pytest.fixture
-    def region_too_small_but_covered(self):
-        return shape({"type": "MultiPolygon",
-                      "coordinates": [[[[0., 0.], [0., -.001], [-.001, -.001], [-.001, 0.], [0., 0.]]]]})
-
-    @pytest.fixture
-    def region_box_north_of_equator(self):
-        return shape({"type": "MultiPolygon",
-                      "coordinates": [[[[0., 0.], [0., 1.], [1., 1.], [1., 0.], [0., 0.]]]]})
-
-    @pytest.fixture
-    def region_box_span_equator(self):
-        return shape({"type": "MultiPolygon",
-                      "coordinates": [[[[-0.5, -0.5], [-0.5, 0.5], [0.5, 0.5], [0.5, -0.5], [-0.5, -0.5]]]]})
-
-    @pytest.fixture
-    def region_far_out_at_the_date_line(self):
-        return shape({"type": "MultiPolygon",
-                      "coordinates": [[[[-202, -90], [-202, 22], [301, 22], [301, -90], [-202, -90]]]]})
-
-    @pytest.fixture
-    def region_small_but_well_known(self):
-        return shape({"type": "MultiPolygon",
-                      "coordinates": [[[[-122.255, 37.188], [-122.255, 37.438], [-122.38, 37.438]]]]})
-
-    @pytest.fixture
-    def period_supported(self):
-        return DateRange("2019-01-01", "2019-12-31")
-
-    @pytest.fixture
-    def period_not_supported(self):
-        return DateRange("0001-01-01", "2019-12-31")
-
-    @pytest.fixture
-    def period_not_supported_other(self):
-        return DateRange("2000-01-01", "9999-12-31")
-
-    @pytest.fixture
-    def period_too_short(self):
-        return DateRange("2100-01-01", "2100-01-31")
-
-    @pytest.fixture
-    def pollutant_supported(self):
-        return Pollutant.NH3
-
-    @pytest.fixture
-    def pollutant_not_supported(self):
-        return Pollutant.NO2
 
     def test_covers(self, calc, region_sample_south, region_sample_north, region_sample_span_equator,
                     region_clone_coverage, region_other_covered, region_other_not_covered,
@@ -249,18 +272,24 @@ class TestCalcMethods:
     def test_combine_uncertainties_simple(self, calc):
         assert 2 == calc._combine_uncertainties(Series([10]), Series([2]))
         assert 0 == calc._combine_uncertainties(Series([42, 15]), Series([0, 0]))
-        assert ((10 * 2) ** 2 + (10 * 4) ** 2) ** 0.5 / 20 == calc._combine_uncertainties(Series([10, 10]), Series([2, 4]))
-        assert ((10 * 2) ** 2 + (10 * 4) ** 2) ** 0.5 / 20 == calc._combine_uncertainties(Series([10, -10]), Series([-2, 4]))
-        assert ((10 * 2) ** 2 + (5 * 4) ** 2) ** 0.5 / 15 == calc._combine_uncertainties(Series([-10, -5]), Series([-2, -4]))
-        assert ((10 * 3) ** 2 + (5 * 3) ** 2) ** 0.5 / 15 == calc._combine_uncertainties(Series([-10, -5]), Series(3 for _ in range(2)))
+        assert ((10 * 2) ** 2 + (10 * 4) ** 2) ** 0.5 / 20 == \
+               calc._combine_uncertainties(Series([10, 10]), Series([2, 4]))
+        assert ((10 * 2) ** 2 + (10 * 4) ** 2) ** 0.5 / 20 == \
+               calc._combine_uncertainties(Series([10, -10]), Series([-2, 4]))
+        assert ((10 * 2) ** 2 + (5 * 4) ** 2) ** 0.5 / 15 == \
+               calc._combine_uncertainties(Series([-10, -5]), Series([-2, -4]))
+        assert ((10 * 3) ** 2 + (5 * 3) ** 2) ** 0.5 / 15 == \
+               calc._combine_uncertainties(Series([-10, -5]), Series(3 for _ in range(2)))
 
     def test_combine_uncertainties_drop_index(self, calc):
         assert 2 == calc._combine_uncertainties(Series([10], index=['A']), Series([2], index=['A']))
         assert 2 == calc._combine_uncertainties(Series([10], index=['A']), Series([2], index=['B']))
 
     def test_combine_uncertainties_partly_nan(self, calc):
-        assert ((10 * 2) ** 2 + (10 * 4) ** 2) ** 0.5 / 20 == calc._combine_uncertainties(Series([10, numpy.nan, 10]), Series([2, 3, 4]))
-        assert ((10 * 2) ** 2) ** 0.5 / 10 == calc._combine_uncertainties(Series([10, numpy.nan, numpy.nan]), Series([2, 3, 4]))
+        assert ((10 * 2) ** 2 + (10 * 4) ** 2) ** 0.5 / 20 == \
+               calc._combine_uncertainties(Series([10, numpy.nan, 10]), Series([2, 3, 4]))
+        assert ((10 * 2) ** 2) ** 0.5 / 10 == \
+               calc._combine_uncertainties(Series([10, numpy.nan, numpy.nan]), Series([2, 3, 4]))
         assert 0 == calc._combine_uncertainties(Series([numpy.nan, numpy.nan, numpy.nan]), Series([2, 3, 4]))
 
     def test_combine_uncertainties_partly_empty(self, calc):
@@ -268,7 +297,8 @@ class TestCalcMethods:
         assert 0 == calc._combine_uncertainties(Series([]), Series([2]))
 
     def test_combine_uncertainties_series_lengths_do_not_match(self, calc):
-        assert ((10 * 2) ** 2 + (20 * 3) ** 2) ** 0.5 / 30 == calc._combine_uncertainties(Series([10, 20]), Series([2, 3, 4]))
+        assert ((10 * 2) ** 2 + (20 * 3) ** 2) ** 0.5 / 30 == \
+               calc._combine_uncertainties(Series([10, 20]), Series([2, 3, 4]))
         with pytest.raises(ValueError):
             calc._combine_uncertainties(Series([10, 20]), Series([2]))
 
