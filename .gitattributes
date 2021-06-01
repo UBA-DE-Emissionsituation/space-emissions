@@ -1,1 +1,1 @@
-data/* -linguist-detectable
+data/** linguist-detectable=false
