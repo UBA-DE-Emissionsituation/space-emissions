@@ -41,7 +41,7 @@ class DummyEOEmissionCalculator(EOEmissionCalculator):
     def supports(pollutant: Pollutant) -> bool:
         return pollutant is not None
 
-    def run(self, region=None, period=None, pollutant=None) -> dict:
+    def run(self, region=None, period=None, pollutant=None):
         self._state = Status.RUNNING
         self._progress = 20
         time.sleep(.3)
