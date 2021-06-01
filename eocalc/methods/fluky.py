@@ -5,6 +5,7 @@ import random
 from datetime import date
 
 from shapely.geometry import MultiPolygon, shape
+from pandas import DataFrame
 from geopandas import GeoDataFrame, overlay
 
 from eocalc.context import Pollutant, GNFR
@@ -43,7 +44,7 @@ class RandomEOEmissionCalculator(EOEmissionCalculator):
     def supports(pollutant: Pollutant) -> bool:
         return pollutant is not None
 
-    def run(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
+    def run(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict[str, DataFrame]:
         self._validate(region, period, pollutant)
         self._state = Status.RUNNING
         self._progress = 0

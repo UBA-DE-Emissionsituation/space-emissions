@@ -8,7 +8,7 @@ from datetime import date, timedelta
 from urllib.request import urlretrieve
 
 import numpy
-from pandas import Series
+from pandas import DataFrame, Series
 from shapely.geometry import MultiPolygon, shape
 from geopandas import GeoDataFrame, overlay
 
@@ -56,7 +56,7 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
     def supports(pollutant: Pollutant) -> bool:
         return pollutant == Pollutant.NO2
 
-    def run(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict:
+    def run(self, region: MultiPolygon, period: DateRange, pollutant: Pollutant) -> dict[str, DataFrame]:
         self._validate(region, period, pollutant)
         self._state = Status.RUNNING
         self._progress = 0  # TODO Update progress below!
@@ -65,7 +65,7 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
         grid = self._create_grid(region, TEMIS_BIN_WIDTH, TEMIS_BIN_WIDTH, snap=True, include_center_cols=True)
 
         # 2. Read TEMIS data into the grid, use cache to avoid re-reading the file for each day individually
-        cache = {}
+        cache: dict[str, list[float]] = {}
         for column, day in enumerate(period):
             month_cache_key = f"{day:%Y-%m}"
             if month_cache_key not in cache.keys():
@@ -99,12 +99,12 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
         return {self.TOTAL_EMISSIONS_KEY: table, self.GRIDDED_EMISSIONS_KEY: grid}
 
     @staticmethod
-    def _read_toms_data(region: MultiPolygon, file: str) -> ():
-        # TODO Make this work with regions wrapping around to long < -180 or long > 180?
+    def _read_toms_data(region: MultiPolygon, file: str) -> list[float]:
+        # TODO Make this work with regions wrapping around to long < -180 or long > 180? TODO more stuff!
         min_lat, max_lat = region.bounds[1] - region.bounds[1] % TEMIS_BIN_WIDTH, region.bounds[3]
         min_long, max_long = region.bounds[0] - region.bounds[0] % TEMIS_BIN_WIDTH,  region.bounds[2]
 
-        result = []
+        result: list[float] = []
 
         with open(file, 'r') as data:
             lat = -91
@@ -152,7 +152,7 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
 
     def _calculate_row_uncertainties(self, grid, period):
         """Since the result only depends on the number of values, we can make this fast."""
-        cache = {}
+        cache: dict[int, float] = {}
         uncertainties = Series([TEMIS_CELL_UNCERTAINTY] * len(period))
 
         for row in range(len(grid)):
