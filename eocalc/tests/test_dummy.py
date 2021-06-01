@@ -1,39 +1,33 @@
 # -*- coding: utf-8 -*-
-import unittest
-
-from shapely.geometry import shape
+import pytest
 
 from eocalc.context import Pollutant
 from eocalc.methods.dummy import DummyEOEmissionCalculator
 
+from eocalc.tests.test_base import region_sample_north, region_sample_south, region_sample_span_equator
 
-class TestDummyMethods(unittest.TestCase):
 
-    def test_minimum_area(self):
-        self.assertEqual(0, DummyEOEmissionCalculator.minimum_area_size())
+@pytest.fixture
+def calc():
+    return DummyEOEmissionCalculator()
 
-    def test_covers(self):
-        calc = DummyEOEmissionCalculator()
-        north = shape({'type': 'MultiPolygon',
-                      'coordinates': [[[[-110., 20.], [140., 20.], [180., 40.], [-180., 30.], [-110., 20.]]]]})
-        south = shape({'type': 'MultiPolygon',
-                       'coordinates': [[[[-110., -20.], [140., -20.], [180., -40.], [-180., -30.], [-110., -20.]]]]})
-        both = shape({'type': 'MultiPolygon',
-                       'coordinates': [[[[-110., 20.], [140., -20.], [180., -40.], [-180., -30.], [-110., 20.]]]]})
-        self.assertTrue(calc.covers(north))
-        self.assertTrue(calc.covers(south))
-        self.assertTrue(calc.covers(both))
 
-    def test_minimum_period(self):
-        self.assertEqual(0, DummyEOEmissionCalculator.minimum_period_length())
+class TestDummyMethods:
 
-    def test_supports(self):
+    def test_minimum_area(self, calc):
+        assert 0 == calc.minimum_area_size()
+
+    def test_covers(self, calc, region_sample_south, region_sample_north, region_sample_span_equator):
+        assert calc.covers(region_sample_north)
+        assert calc.covers(region_sample_south)
+        assert calc.covers(region_sample_span_equator)
+
+    def test_minimum_period(self, calc):
+        assert 0 == calc.minimum_period_length()
+
+    def test_supports(self, calc):
         for p in Pollutant:
-            self.assertTrue(DummyEOEmissionCalculator.supports(p))
+            assert calc.supports(p)
 
-    def test_run(self):
-        self.assertEqual(42, DummyEOEmissionCalculator().run())
-
-
-if __name__ == '__main__':
-    unittest.main()
+    def test_run(self, calc):
+        assert 42 == calc.run()
