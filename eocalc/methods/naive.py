@@ -84,11 +84,10 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
         # 4. Update emission columns by multiplying with the area value and sum it all up
         grid.iloc[:, -(len(period)+3):-3] = grid.iloc[:, -(len(period)+3):-3].mul(grid["Area [km²]"], axis=0)
         grid.insert(1, f"Total {pollutant.name} emissions [kg]", grid.iloc[:, -(len(period)+3):-3].sum(axis=1))
-        grid.insert(2, "Umin [%]", numpy.NaN)
-        grid.insert(3, "Umax [%]", numpy.NaN)
+        grid.insert(2, "Umin [%]", self._calculate_row_uncertainties(grid, period))
+        grid.insert(3, "Umax [%]", grid["Umin [%]"])
         grid.insert(4, "Number of values [1]", len(period))
         grid.insert(5, "Missing values [1]", grid.iloc[:, -(len(period)+3):-3].isna().sum(axis=1))
-        self._calculate_row_uncertainties(grid, period)  # Replace NaNs in Umin/Umax cols with actual values
 
         # 5. Add GNFR table incl. uncertainties
         table = self._create_gnfr_table(pollutant)
@@ -150,10 +149,10 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
 
         return file
 
-    def _calculate_row_uncertainties(self, grid, period):
+    def _calculate_row_uncertainties(self, grid, period) -> list[float]:
         # TODO It would be great to make this faster using clever iteration/numpy/CPython
         uncertainties = Series([TEMIS_CELL_UNCERTAINTY] * len(period))
-        grid["Umin [%]"] = grid["Umax [%]"] = [
+        return [
             self._combine_uncertainties(row[-(len(period) + 3):-3], uncertainties)
             for _, row in grid.iterrows()
         ]
