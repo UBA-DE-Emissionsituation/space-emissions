@@ -151,13 +151,9 @@ class TropomiMonthlyMeanAggregator(EOEmissionCalculator):
         return file
 
     def _calculate_row_uncertainties(self, grid, period):
-        """Since the result only depends on the number of values, we can make this fast."""
-        cache: dict[int, float] = {}
+        # TODO It would be great to make this faster using clever iteration/numpy/CPython
         uncertainties = Series([TEMIS_CELL_UNCERTAINTY] * len(period))
-
-        for row in range(len(grid)):
-            value_count = grid.at[row, "Number of values [1]"] - grid.at[row, "Missing values [1]"]
-            if value_count not in cache.keys():
-                cache[value_count] = self._combine_uncertainties(grid.iloc[row, -(len(period) + 3):-3], uncertainties)
-
-            grid.at[row, "Umin [%]"] = grid.at[row, "Umax [%]"] = cache[value_count]
+        grid["Umin [%]"] = grid["Umax [%]"] = [
+            self._combine_uncertainties(row[-(len(period) + 3):-3], uncertainties)
+            for _, row in grid.iterrows()
+        ]
