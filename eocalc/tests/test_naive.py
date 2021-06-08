@@ -24,8 +24,8 @@ def region_germany():
 
 
 @pytest.fixture
-def region_europe():
-    with open("data/regions/europe.geo.json", 'r') as geojson_file:
+def region_saxony():
+    with open("data/regions/roughly_saxonia.geo.json", 'r') as geojson_file:
         return shape(json.load(geojson_file)["geometry"])
 
 
@@ -91,16 +91,22 @@ class TestTropomiMonthlyMeanAggregatorMethods:
 
         assert not calc.supports(None)
 
-    def test_run(self, calc, region_germany, region_europe):
+    def test_run_germany(self, calc, region_germany):
         result = calc.run(region_germany, DateRange(start='2018-08-01', end='2018-08-31'), Pollutant.NO2)
         assert 22.5 <= result[calc.TOTAL_EMISSIONS_KEY].iloc[-1, 0] <= 22.6
         assert 3.49 <= result[calc.TOTAL_EMISSIONS_KEY].iloc[-1, 1] <= 3.5
         assert 3.49 <= result[calc.TOTAL_EMISSIONS_KEY].iloc[-1, 2] <= 3.5
 
-        result = calc.run(region_europe, DateRange(start='2020-02-10', end='2020-02-25'), Pollutant.NO2)
-        assert 187 <= result[calc.TOTAL_EMISSIONS_KEY].iloc[-1, 0] <= 188
-        assert 1 <= result[calc.TOTAL_EMISSIONS_KEY].iloc[-1, 1] <= 1.1
-        assert 1 <= result[calc.TOTAL_EMISSIONS_KEY].iloc[-1, 2] <= 1.1
+    def test_run_saxony(self, calc, region_saxony):
+        result = calc.run(region_saxony, DateRange(start='2020-02-10', end='2020-02-10'), Pollutant.NO2)
+        assert 0.04 <= result[calc.TOTAL_EMISSIONS_KEY].iloc[-1, 0] <= 0.05
+        assert 71 <= result[calc.TOTAL_EMISSIONS_KEY].iloc[-1, 1] <= 72
+        assert 71 <= result[calc.TOTAL_EMISSIONS_KEY].iloc[-1, 2] <= 72
+
+        result = calc.run(region_saxony, DateRange(start='2020-02-29', end='2020-03-01'), Pollutant.NO2)
+        assert 0.09 <= result[calc.TOTAL_EMISSIONS_KEY].iloc[-1, 0] <= 0.1
+        assert 50 <= result[calc.TOTAL_EMISSIONS_KEY].iloc[-1, 1] <= 51
+        assert 50 <= result[calc.TOTAL_EMISSIONS_KEY].iloc[-1, 2] <= 51
 
     def test_read_toms_data(self, calc, clipped_data_file_name, region_small_but_well_known,
                             region_small_but_well_known_other, region_small_but_well_known_third):

@@ -230,7 +230,7 @@ class EOEmissionCalculator(ABC):
         if transform(projection, region).area / 10**6 < self.minimum_area_size():
             raise ValueError("Region too small!")
 
-        if (period.end - period.start).days < self.minimum_period_length():
+        if len(period) < self.minimum_period_length():
             raise ValueError(f"Time span {period} too short (minimum is {self.minimum_period_length()} days)!")
         if period.start < self.earliest_start_date():
             raise ValueError(f"Method cannot be used for period starting on {period.start}!")
