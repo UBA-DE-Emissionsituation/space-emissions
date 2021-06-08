@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from context import GNFR
+from eocalc.context import GNFR
 
 
 class TestGNFREnum:

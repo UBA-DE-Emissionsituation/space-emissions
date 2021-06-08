@@ -116,7 +116,7 @@ def calc():
         def supports(pollutant: Pollutant) -> bool:
             return pollutant == Pollutant.NH3
 
-        def run(self, region=None, period=None, pollutant=None) -> dict:
+        def run(self, region=None, period=None, pollutant=None):
             return 42
 
     return MyEOEmissionCalculator()

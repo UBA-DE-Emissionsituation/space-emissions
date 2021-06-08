@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 import pytest
 import json
+import os
 from datetime import date, timedelta
 
 from shapely.geometry import shape
 
 from eocalc.context import Pollutant
 from eocalc.methods.base import DateRange
-from eocalc.methods.naive import TropomiMonthlyMeanAggregator
+from eocalc.methods.naive import TropomiMonthlyMeanAggregator, LOCAL_DATA_FOLDER
 
 from eocalc.tests.test_base import region_sample_north, region_sample_south, region_sample_span_equator
 
@@ -114,3 +115,11 @@ class TestTropomiMonthlyMeanAggregatorMethods:
                calc._read_toms_data(region_small_but_well_known, clipped_data_file_name)
         assert [30] == calc._read_toms_data(region_small_but_well_known_other, clipped_data_file_name)
         assert [69, 60] == calc._read_toms_data(region_small_but_well_known_third, clipped_data_file_name)
+
+    def test_assure_data_availability(self, calc):
+        day = date.fromisoformat("2018-09-15")
+        file = calc._assure_data_availability(day)
+        assert f"{LOCAL_DATA_FOLDER}/no2_201809.asc" == file
+
+        os.remove(file)
+        assert f"{LOCAL_DATA_FOLDER}/no2_201809.asc" == calc._assure_data_availability(day)
