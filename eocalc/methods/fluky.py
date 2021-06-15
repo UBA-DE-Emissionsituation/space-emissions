@@ -4,17 +4,8 @@
 import random
 from datetime import date
 
-<<<<<<< HEAD
-from pandas import DataFrame
-
-import geopandas
-import pyproj
-import shapely.ops
-from shapely.geometry import MultiPolygon, shape
-=======
 from shapely.geometry import MultiPolygon, shape
 from geopandas import GeoDataFrame, overlay
->>>>>>> naive
 
 from eocalc.context import Pollutant, GNFR
 from eocalc.methods.base import DateRange

@@ -113,7 +113,7 @@ def flow_function_g(y, s, plumewidth, decay):
 
 # i.e. flowfun to calculate the factors in arrays etc
 # convolution of f/g essentially.
-def constant_flowfun(x1, x2, s1, decay, plumewidth): 
+def constant_flowfuntion(x1, x2, s1, decay, plumewidth): 
     fout = flow_function_f(x1, x2, plumewidth) * flow_function_g(x2, s1, plumewidth, decay)
     return fout
 
@@ -123,7 +123,7 @@ def constant_flowfun(x1, x2, s1, decay, plumewidth):
 # legendre bias function or other
 
 # setup_lin_matrix --> create the matrix for AX=B
-def create_linear_system(datadf,nss,lin_shape_1,source_lon,source_lat,lon_var,lat_var,windspeed_var,winddirec_var,lamb,sigma):
+def calc_entry_linear_system(datadf,nss,lin_shape_1,source_lon,source_lat,lon_var,lat_var,windspeed_var,winddirec_var,decay,plumewidth):
     flow_rot = np.zeros(lin_shape_1,float)
     x_rot = np.zeros(lin_shape_1,float)
     y_rot = np.zeros(lin_shape_1,float)
@@ -143,37 +143,90 @@ def create_linear_system(datadf,nss,lin_shape_1,source_lon,source_lat,lon_var,la
 
     if len(flow_rot[selec]) > 1:  # [selec2]) > 1:
         indexi = np.arange(lin_shape_1)[selec]  # [selec2]
-        flow_rot[indexi] = constant_flowfun(
+        flow_rot[indexi] = constant_flowfuntion(
             x_rot[indexi], y_rot[indexi], datadf[windspeed_var].values[indexi],
-            lamb,sigma)
+            decay,plumewidth)
     else:
-        print('length wrong')
+        print('x_rot/y_rot length wrong')
         raise ValueError
 
-    if np.mod(nss,100)==0:print('done',nss)
+    if np.mod(nss,100)==0:
+        print('done',nss)
     return nss,flow_rot,x_rot,y_rot
 
 # fitting operator?
 
-
+def multisource_emission_fit(df_sources, df_obs, lon_var, lat_var, plumewidth, decay, west,east,south,north,
+                             minflow=0.0, multiprocessing=False,multiprocessing_workers=16):
+    # define arrays
+    n_sources =  len(df_sources)
+    n_obs =  len(df_obs)
+    print('Observations:',n_obs)
+    print('Sources:',n_sources)
+    x_rotated = np.zeros((n_sources, n_obs))
+    y_rotated = np.zeros((n_sources, n_obs))
+    wind_obs = df_obs.windspeed.values
+    # TODO add options for different bias'
+    linear_array = np.zeros((n_obs, n_sources), np.float32)     
+    # loop through the observations
+    if multiprocessing == True:
+        #$ TODO implement multiprocessing
+        print('Multi processing not implemented yet')
+        raise ValueError
+    else:
+        for ns in range(n_sources):
+            if np.mod(ns, 100) == 0:
+                print(ns, 'out of', n_sources)
+            line = df_sources.iloc[ns]
+            # build in something for nearest 4degrees all round?
+            # TODO make it depend on lifetime. Longer lifetime == more obs to include
+            selection_near = ((np.abs(df_obs[lon_var].values - line['lon']) < 4.0) & (
+                    np.abs(df_obs[lat_var].values - line['lat']) < 4.0))
+            if len(df_obs[lon_var].values[selection_near]) == 0:
+                continue
+            rotated_obs = np.array(
+                rotate_plume_around_point(line['lon'], 
+                                          line['lat'], 
+                                          df_obs[lon_var].values[selection_near], 
+                                          df_obs[lat_var].values[selection_near],df_obs['winddirection'].values[selection_near]))
+            # TODO maybe return rotated obs?
+            x_rotated[ns, selection_near] = rotated_obs[0, :]
+            y_rotated[ns, selection_near] = rotated_obs[1, :]
+            if len(linear_array[selection_near, ns]) > 1:  # [selection_near2]) > 1:
+                indexi = np.arange(n_obs)[selection_near]  # [selection_near2]
+                # chose 1 for E and 0. for B to calc without strengths etc
+                linear_array[indexi, ns] = constant_flowfuntion(
+                    x_rotated[ns, indexi], y_rotated[ns, indexi], wind_obs[indexi],
+                    decay, plumewidth)  
+                # TODO maybe max flow value to only allow "significant" values
+                linear_array[(linear_array[:, ns] < minflow), ns] = 0.0
+    return linear_array
+    
 # multi source helper --> if multisourcing operations
 def multi_helper(args):
-    return create_linear_system(*args)
+    return calc_entry_linear_system(*args)
 
 # flatten lists --> little helper to correct obsession with lists
 def flatten_list(list_of_lists):
     return [item for sublist in list_of_lists for item in sublist]
 
 # create basic emission fields from a inventory for comparison?
-@staticmethod
-def _read_subset_data(region: MultiPolygon, filelist: list):
+def read_subset_data(region: MultiPolygon, filelist: list, add_region_offset = [None,None]):
     # TODO Make this work with regions wrapping around to long < -180 or long > 180?
-    min_lat, max_lat = region.bounds[1], region.bounds[3]
-    min_long, max_long = region.bounds[0], region.bounds[2] # or region +- 5degrees
+    if add_region_offset[1] is None:
+        min_lat, max_lat = region.bounds[1], region.bounds[3]
+    else:
+        min_lat, max_lat = region.bounds[1]-add_region_offset[1], region.bounds[3]+add_region_offset[1]
+    if add_region_offset[0] is None:
+        min_long, max_long = region.bounds[0], region.bounds[2] # or region +- 5degrees
+    else:
+        min_long, max_long = region.bounds[0]-add_region_offset[0], region.bounds[2]+add_region_offset[1] # or region +- 5degrees
+
     datap = pd.DataFrame()
     # turn into xarray concate?
     for fil in filelist:
         nc = netCDF4.Dataset(fil)
+        print(nc.variables.keys())
         # ensure datap is available even when file empty
         datap_tmp = pd.DataFrame()
         for idx,vari in enumerate(nc.variables.keys()):
@@ -186,15 +239,15 @@ def _read_subset_data(region: MultiPolygon, filelist: list):
                     # 2d and more cases
                     datap_tmp[vari] = [uu for uu in nc[vari][:]]
         # becomes slow, better with xarray
-        datap = datap.append(data_tmp[((datap[lon_var]>=min_long)&
-                                       (datap[lon_var]<max_long)&
-                                       (datap[lat_var]>=min_lat)&
-                                       (datap[lat_var]<max_lat))])
+        datap = datap.append(datap_tmp[((datap_tmp[lon_var]>=min_long)&
+                                       (datap_tmp[lon_var]<max_long)&
+                                       (datap_tmp[lat_var]>=min_lat)&
+                                       (datap_tmp[lat_var]<max_lat))])
     return datap
 
 
 # read data
-def _assure_data_availability(region,day: date,force_rebuild = False, force_pass = False,satellite_name = 'Tropomi') -> list:
+def assure_data_availability(region,day: date,force_rebuild = False, force_pass = False,satellite_name = 'Tropomi') -> list:
     # check lon_min,lon_max,lat_min,lat_max
     # (5.872058868408317, 47.26990127563522, 15.028479576110897, 55.05652618408209)
     # basic patterns
@@ -206,7 +259,7 @@ def _assure_data_availability(region,day: date,force_rebuild = False, force_pass
     # 
     # check if subset is available, if not create
     # find all
-    subset_files = glob.glob(LOCAL_DATA_FOLDER + 'subsets/%s.nc')
+    subset_files = glob.glob(LOCAL_DATA_FOLDER + 'subsets/*.nc')
     # select files within period
     subset_files = [fil for fil in subset_files if f'{day:%Y%m}' in fil]
     
@@ -233,6 +286,7 @@ def _assure_data_availability(region,day: date,force_rebuild = False, force_pass
 
     # find what missing?
     files_missing = list(set(expected_files) - set(subset_files))
+
     if force_rebuild is True:
         files_missing = expected_files
     for fil in files_missing:
@@ -246,9 +300,6 @@ def _assure_data_availability(region,day: date,force_rebuild = False, force_pass
                 print('faulty file check status',fil)
                 raise FileNotFoundError
 
-    
-    # TODO check if subset_files contains files
-    
     # TODO pass remaining files? or expected?
     # file_name = '%s/subset/no2_coor_pattern_date_{day:%Y%m}.nc'%(LOCAL_DATA_FOLDER,lon_min_f,lon_max_f,lat_min_f,lat_max_f,resolution[0],resolution[1])
     
@@ -610,7 +661,18 @@ def interpolate_meteo(pixlon, pixlat, hh, lon_dx, lat_dx, ancdata):
     datap = pd.DataFrame(data_to_frame.astype(float).T, columns=['u', 'v'])
     return datap
 
-
+def chunking_dot(big_matrix, small_matrix, chunk_size=100):
+    # quick solve memory error
+    # https://stackoverflow.com/questions/27668462/numpy-dot-memoryerror-my-dot-very-slow-but-works-why
+    # Make a copy if the array is not already contiguous
+    print(big_matrix.shape,small_matrix.shape)
+    small_matrix = np.ascontiguousarray(small_matrix)
+    print(big_matrix.shape[0], small_matrix.shape[1])
+    R = np.empty((big_matrix.shape[0], small_matrix.shape[1]))
+    for i in range(0, R.shape[0], chunk_size):
+        end = i + chunk_size
+        R[i:end] = np.dot(big_matrix[i:end,:], small_matrix)
+    return R
 
 if __name__ == "__main__":
     # %%
