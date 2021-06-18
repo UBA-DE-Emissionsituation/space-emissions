@@ -269,40 +269,44 @@ class TestCalcMethods:
             assert frame.iloc[:, 1].name.startswith("Umin")
             assert frame.iloc[:, 2].name.startswith("Umax")
 
-    @pytest.mark.parametrize("values, uncertainties, result", [
-        (Series(10), Series(2), 2),
-        (Series([42, 15]), Series([0, 0]), 0),
-        (Series([0, 0]), Series([15, 42]), 0),
-        (Series([10, 10]), Series([2, 4]), ((10 * 2) ** 2 + (10 * 4) ** 2) ** 0.5 / 20),
-        (Series([10, -10]), Series([-2, 4]), ((10 * 2) ** 2 + (10 * 4) ** 2) ** 0.5 / 20),
-        (Series([-10, -5]), Series([-2, -4]), ((10 * 2) ** 2 + (5 * 4) ** 2) ** 0.5 / 15),
-        (Series([-10, -5]), Series(3 for _ in range(2)), ((10 * 3) ** 2 + (5 * 3) ** 2) ** 0.5 / 15)
-    ])
+    @pytest.mark.parametrize(
+        "values, uncertainties, result", [
+            (Series(10), Series(2), 2),
+            (Series([42, 15]), Series([0, 0]), 0),
+            (Series([0, 0]), Series([15, 42]), 0),
+            (Series([10, 10]), Series([2, 4]), ((10 * 2) ** 2 + (10 * 4) ** 2) ** 0.5 / 20),
+            (Series([10, -10]), Series([-2, 4]), ((10 * 2) ** 2 + (10 * 4) ** 2) ** 0.5 / 20),
+            (Series([-10, -5]), Series([-2, -4]), ((10 * 2) ** 2 + (5 * 4) ** 2) ** 0.5 / 15),
+            (Series([-10, -5]), Series(3 for _ in range(2)), ((10 * 3) ** 2 + (5 * 3) ** 2) ** 0.5 / 15)
+        ])
     def test_combine_uncertainties_simple(self, calc, values, uncertainties, result):
         assert result == calc._combine_uncertainties(values, uncertainties)
 
-    @pytest.mark.parametrize("values, uncertainties, result", [
-        (Series([10], index=['A']), Series([2], index=['A']), 2),
-        (Series([10], index=['A']), Series([2], index=['B']), 2),
-        (Series([10], index=['B']), Series([2], index=['A']), 2),
-        (Series([10]), Series([2], index=['Y']), 2),
-        (Series([10], index=['X']), Series([2]), 2)
-    ])
+    @pytest.mark.parametrize(
+        "values, uncertainties, result", [
+            (Series([10], index=['A']), Series([2], index=['A']), 2),
+            (Series([10], index=['A']), Series([2], index=['B']), 2),
+            (Series([10], index=['B']), Series([2], index=['A']), 2),
+            (Series([10]), Series([2], index=['Y']), 2),
+            (Series([10], index=['X']), Series([2]), 2)
+        ])
     def test_combine_uncertainties_drop_index(self, calc, values, uncertainties, result):
         assert result == calc._combine_uncertainties(values, uncertainties)
 
-    @pytest.mark.parametrize("values, uncertainties, result", [
-        (Series([10, numpy.nan, 10]), Series([2, 3, 4]), ((10 * 2) ** 2 + (10 * 4) ** 2) ** 0.5 / 20),
-        (Series([10, numpy.nan, numpy.nan]), Series([2, 3, 4]), ((10 * 2) ** 2) ** 0.5 / 10),
-        (Series([numpy.nan, numpy.nan, numpy.nan]), Series([2, 3, 4]), 0)
-    ])
+    @pytest.mark.parametrize(
+        "values, uncertainties, result", [
+            (Series([10, numpy.nan, 10]), Series([2, 3, 4]), ((10 * 2) ** 2 + (10 * 4) ** 2) ** 0.5 / 20),
+            (Series([10, numpy.nan, numpy.nan]), Series([2, 3, 4]), ((10 * 2) ** 2) ** 0.5 / 10),
+            (Series([numpy.nan, numpy.nan, numpy.nan]), Series([2, 3, 4]), 0)
+        ])
     def test_combine_uncertainties_partly_nan(self, calc, values, uncertainties, result):
         assert result == calc._combine_uncertainties(values, uncertainties)
 
-    @pytest.mark.parametrize("values, uncertainties, result", [
-        (Series([]), Series([]), 0),
-        (Series([]), Series([2]), 0)
-    ])
+    @pytest.mark.parametrize(
+        "values, uncertainties, result", [
+            (Series([]), Series([]), 0),
+            (Series([]), Series([2]), 0)
+        ])
     def test_combine_uncertainties_partly_empty(self, calc, values, uncertainties, result):
         assert result == calc._combine_uncertainties(values, uncertainties)
 
@@ -316,30 +320,53 @@ class TestCalcMethods:
         with pytest.raises(ValueError):
             calc._combine_uncertainties(Series([10, 20]), Series([2, numpy.nan]))
 
-    @pytest.mark.parametrize("width, height, snap, cell_count", [
-        (10, 10, False, 1), (2, 2, False, 1), (1, 1, False, 1), (1, 1, True, 1),
-        (0.5, 1, False, 2), (1, 0.5, True, 2), (0.5, 0.5, False, 4), (0.5, 0.5, True, 4),
-        (0.3, 0.3, True, 16), (0.3, 0.3, False, 16)
-    ])
+    @pytest.mark.parametrize(
+        "width, height, snap, cell_count", [
+            (10, 10, False, 1),
+            (2, 2, False, 1),
+            (1, 1, False, 1),
+            (1, 1, True, 1),
+            (0.5, 1, False, 2),
+            (1, 0.5, True, 2),
+            (0.5, 0.5, False, 4),
+            (0.5, 0.5, True, 4),
+            (0.3, 0.3, True, 16),
+            (0.3, 0.3, False, 16)
+        ])
     def test_create_grid_simple(self, calc, width, height, snap, region_box_north_of_equator, cell_count):
         assert cell_count == len(calc._create_grid(region_box_north_of_equator, width, height, snap=snap))
 
-    @pytest.mark.parametrize("width, height, snap, cell_count", [
-        (10, 10, False, 1), (10, 10, True, 4), (2, 2, False, 1), (1, 1, False, 1),
-        (1, 1, True, 4), (0.5, 1, False, 2), (1, 0.5, True, 4), (0.5, 0.5, False, 4),
-        (0.5, 0.5, True, 4), (0.3, 0.3, True, 16), (0.3, 0.3, False, 16)
-    ])
+    @pytest.mark.parametrize(
+        "width, height, snap, cell_count", [
+            (10, 10, False, 1),
+            (10, 10, True, 4),
+            (2, 2, False, 1),
+            (1, 1, False, 1),
+            (1, 1, True, 4),
+            (0.5, 1, False, 2),
+            (1, 0.5, True, 4),
+            (0.5, 0.5, False, 4),
+            (0.5, 0.5, True, 4),
+            (0.3, 0.3, True, 16),
+            (0.3, 0.3, False, 16)
+        ])
     def test_create_grid_span_equator(self, calc, width, height, snap, region_box_span_equator, cell_count):
         assert cell_count == len(calc._create_grid(region_box_span_equator, width, height, snap=snap))
 
-    @pytest.mark.parametrize("width, height, snap, cell_count", [
-        (10, 10, False, 51 * 12), (10, 10, True, 52 * 12), (50, 10, False, 11 * 12), (50, 10, True, 12 * 12)
-    ])
+    @pytest.mark.parametrize(
+        "width, height, snap, cell_count", [
+            (10, 10, False, 51 * 12),
+            (10, 10, True, 52 * 12),
+            (50, 10, False, 11 * 12),
+            (50, 10, True, 12 * 12)
+        ])
     def test_create_beyond_minus_180_degrees(self, calc, width, height, snap, region_far_out_at_the_date_line, cell_count):
         assert cell_count == len(calc._create_grid(region_far_out_at_the_date_line, width, height, snap=snap))
 
-    @pytest.mark.parametrize("width, height, snap, cell_count", [
-        (0.125, 0.125, False, 2), (0.125, 0.125, True, 6)
-    ])
+    @pytest.mark.parametrize(
+        "width, height, snap, cell_count", [
+            (0.125, 0.125, False, 2),
+            (0.125, 0.125, True, 6)
+        ])
     def test_create_grid_well_known(self, calc, width, height, snap, region_small_but_well_known, cell_count):
         assert cell_count == len(calc._create_grid(region_small_but_well_known, width, height, snap=snap))
