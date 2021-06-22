@@ -55,28 +55,19 @@ def region_small_but_well_known_third():
 
 class TestTropomiMonthlyMeanAggregatorMethods:
 
-    def test_covers_simple(self, calc, region_sample_north, region_sample_south, region_sample_span_equator):
-        assert calc.covers(region_sample_north)
-        assert calc.covers(region_sample_south)
-        assert calc.covers(region_sample_span_equator)
+    @pytest.mark.parametrize("region", ["region_sample_north", "region_sample_south", "region_sample_span_equator"])
+    def test_covers_simple(self, calc, region, request):
+        assert calc.covers(request.getfixturevalue(region))
 
-    def test_covers_sample_region_from_json(self, calc):
-        with open("data/regions/adak-left.geo.json", 'r') as geojson_file:
-            assert not calc.covers(shape(json.load(geojson_file)["geometry"]))
-        with open("data/regions/adak-right.geo.json", 'r') as geojson_file:
-            assert not calc.covers(shape(json.load(geojson_file)["geometry"]))
-        with open("data/regions/alps_and_po_valley.geo.json", 'r') as geojson_file:
-            assert calc.covers(shape(json.load(geojson_file)["geometry"]))
-        with open("data/regions/europe.geo.json", 'r') as geojson_file:
-            assert calc.covers(shape(json.load(geojson_file)["geometry"]))
-        with open("data/regions/germany.geo.json", 'r') as geojson_file:
-            assert calc.covers(shape(json.load(geojson_file)["geometry"]))
-        with open("data/regions/guinea_and_gabon.geo.json", 'r') as geojson_file:
-            assert calc.covers(shape(json.load(geojson_file)["geometry"]))
-        with open("data/regions/portugal_envelope.geo.json", 'r') as geojson_file:
-            assert calc.covers(shape(json.load(geojson_file)["geometry"]))
-        with open("data/regions/roughly_saxonia.geo.json", 'r') as geojson_file:
-            assert calc.covers(shape(json.load(geojson_file)["geometry"]))
+    @pytest.mark.parametrize("json_file, result", [
+        ("adak-left.geo.json", False), ("adak-right.geo.json", False),
+        ("alps_and_po_valley.geo.json", True), ("europe.geo.json", True),
+        ("germany.geo.json", True), ("guinea_and_gabon.geo.json", True),
+        ("portugal_envelope.geo.json", True), ("roughly_saxonia.geo.json", True)
+    ])
+    def test_covers_sample_region_from_json(self, calc, json_file, result):
+        with open(f"data/regions/{json_file}", 'r') as geojson_file:
+            assert result == calc.covers(shape(json.load(geojson_file)["geometry"]))
 
     def test_end_date(self):
         def go_to_end_of_previous_month(day):
@@ -109,12 +100,13 @@ class TestTropomiMonthlyMeanAggregatorMethods:
         assert 50 <= result[calc.TOTAL_EMISSIONS_KEY].iloc[-1, 1] <= 51
         assert 50 <= result[calc.TOTAL_EMISSIONS_KEY].iloc[-1, 2] <= 51
 
-    def test_read_toms_data(self, calc, clipped_data_file_name, region_small_but_well_known,
-                            region_small_but_well_known_other, region_small_but_well_known_third):
-        assert [133, 186, 189, 304, 272, 294] == \
-               calc._read_toms_data(region_small_but_well_known, clipped_data_file_name)
-        assert [30] == calc._read_toms_data(region_small_but_well_known_other, clipped_data_file_name)
-        assert [69, 60] == calc._read_toms_data(region_small_but_well_known_third, clipped_data_file_name)
+    @pytest.mark.parametrize("file, region, result", [
+        ("clipped_data_file_name", "region_small_but_well_known", [133, 186, 189, 304, 272, 294]),
+        ("clipped_data_file_name", "region_small_but_well_known_other", [30]),
+        ("clipped_data_file_name", "region_small_but_well_known_third", [69, 60])
+    ])
+    def test_read_toms_data(self, calc, file, region, result, request):
+        assert result == calc._read_toms_data(request.getfixturevalue(region), request.getfixturevalue(file))
 
     def test_assure_data_availability(self, calc):
         day = date.fromisoformat("2018-09-15")
