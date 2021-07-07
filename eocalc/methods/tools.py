@@ -37,6 +37,7 @@ interval_lat = 15
 # %%
 # winddir/speed back to u,v 
 def winddir_speed_to_u_v(wind_spd, wind_dir):
+    # function to compute u,v vectors from wind magnitude and direction
     dir_rp1 = wind_dir * 2 * np.pi / 360.
     dir_rp = np.array(dir_rp1) + np.pi / 2
     u = wind_spd * np.cos(dir_rp)
@@ -49,16 +50,29 @@ def calc_wind_speed(u,v):
 
 # winddirection
 def calc_wind_direction(u, v):
-    # calc wind direction from u,v
+    # calc wind direction from u,v in radians
     # ensure array form
     u = np.array(u)
     v = np.array(v)
+    #initialize wind direction vector
     wind_dir = np.zeros(len(u),float)
     
+    #dependent on the sign of the wind direction component we compute the angle of the wind direction w.r.t u in radians
+    #               ^
+    #               |
+    #      sel_lzero->atan(u/v)+pi       
+    #               |
+    #    <----------+----------> (u)
+    #               |
+    # sel_neg_both  | sel_negv_posu
+    # atan(u/v)     | atan(u/v)+2*pi
+    #               ˅
+    #              (v)
     sel_lzero = (v >= 0.)
     sel_neg_both = ((u < 0.) & ( v < 0.))
     sel_negv_posu = ((u >= 0.) &( v < 0.))
     
+    #only do the computation if the corresponding wind direction occurs
     if len(wind_dir[sel_lzero])>0:
         wind_dir[sel_lzero] = ((180. / np.pi) * np.arctan(u[sel_lzero] / v[sel_lzero]) + 180.)
     if len(wind_dir[sel_neg_both])>0:
