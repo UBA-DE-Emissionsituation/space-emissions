@@ -5,8 +5,7 @@ from abc import ABC, abstractmethod
 from enum import Enum, auto
 from datetime import date, timedelta
 from typing import Union
-
-
+import math
 import numpy as np
 from shapely.geometry import MultiPolygon
 from shapely.ops import transform
@@ -329,8 +328,8 @@ class EOEmissionCalculator(ABC):
             region.bounds[3] + (height - region.bounds[3] % height if region.bounds[3] % height != 0 else 0)
         )
 
-        for lat in (min_lat + y * height for y in range(np.ceil((max_lat - min_lat) / height))):
-            for long in (min_long + x * width for x in range(np.ceil((max_long - min_long) / width))):
+        for lat in (min_lat + y * height for y in range(math.ceil((max_lat - min_lat) / height))):
+            for long in (min_long + x * width for x in range(math.ceil((max_long - min_long) / width))):
                 grid["features"].append({
                     "type": "Feature",
                     "properties": {"Center latitude [°]": f"{lat + height / 2}",

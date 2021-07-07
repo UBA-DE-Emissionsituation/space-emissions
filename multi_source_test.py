@@ -44,7 +44,8 @@ print(f"All finished in {datetime.datetime.now()-start}.")
 # # %%
 # # Remove regions not covered
 # regions = {filename: region for filename, region in regions.items() if MultiSourceCalculator.covers(region)}
-
+quicktestplot = overlay(results[filename]['gpd'], GeoDataFrame({'geometry': [region]}, crs="EPSG:4326"), how='intersection')
+quicktestplot.plot(f"Total {Pollutant.NO2.name} emissions [kg]", figsize=(20, 20), legend=True, legend_kwds={'label': f"Emissions in {filename} [kg]", 'orientation': "horizontal"})
 # %%
 
 
