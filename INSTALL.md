@@ -2,7 +2,7 @@
 
 </br>
 
-In order to use the spaceborne-emission calculator efficiently also on your platform we would reccommend the usage of the "Fast Cross-Platform Package Manager" [Mamba](https://github.com/mamba-org/mamba), which will handle all the necessary dependencies for the spaceborne-emmission calculator following the setup procedure described here from scratch:
+In order to use the spaceborne-emission calculator efficiently also on your platform we would recommend the usage of the "Fast Cross-Platform Package Manager" [Mamba](https://github.com/mamba-org/mamba), which will handle all the necessary dependencies for the spaceborne-emmission calculator following the setup procedure described here from scratch:
 
 </br>
 
