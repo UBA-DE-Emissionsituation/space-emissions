@@ -178,24 +178,27 @@ class MultiSourceCalculator(EOEmissionCalculator):
         emissions = source_conversion * solution[0]
         gp_sources['fitted_emissions'] = emissions*1e-6
         gp_sources.plot('fitted_emissions',vmin=0,vmax=3,legend=True)
+        plt.ion()
+        plt.show()
         # calculate reconstruction
         # print('Loop took' '%3.3i:%2.2i' % ( int((time.time() - s_t_0) / 60), int(numpy.mod((time.time() - s_t_0), 60))), 'Min:Sec')                
-        s_t_3 = time.time()
-        reconstructed_obs = tools.chunking_dot(linear_system_A,numpy.array(solution[0])[:,numpy.newaxis]) + bias_per_obs
-        print('Chunking took' '%3.3i:%2.2i' % ( int((time.time() - s_t_3) / 60), int(numpy.mod((time.time() - s_t_3), 60))), 'Min:Sec')                
-        s_t_3 = time.time()
-        reconstructed_obs = scipy.linalg.blas.dgemm(alpha=1.0, a=sA, b=numpy.array(solution[0])[:], trans_b=True) + bias_per_obs
-        print('SPBLAS took' '%3.3i:%2.2i' % ( int((time.time() - s_t_3) / 60), int(numpy.mod((time.time() - s_t_3), 60))), 'Min:Sec')                
-        s_t_3 = time.time()
-        reconstructed_obs = scipy.linalg.blas.dgemm(alpha=1.0, a=sA.T, b=numpy.array(solution[0])[:,numpy.newaxis].T, trans_b=True) + bias_per_obs
-        print('SPBLAS.T took' '%3.3i:%2.2i' % ( int((time.time() - s_t_3) / 60), int(numpy.mod((time.time() - s_t_3), 60))), 'Min:Sec')                
+        # s_t_3 = time.time()
+        # reconstructed_obs = tools.chunking_dot(linear_system_A,numpy.array(solution[0])[:,numpy.newaxis]) + bias_per_obs
+        # print('Chunking took' '%3.3i:%2.2i' % ( int((time.time() - s_t_3) / 60), int(numpy.mod((time.time() - s_t_3), 60))), 'Min:Sec')                
+        # s_t_3 = time.time()
+        # reconstructed_obs = scipy.linalg.blas.dgemm(alpha=1.0, a=sA, b=numpy.array(solution[0])[:], trans_b=True) + bias_per_obs
+        # print('SPBLAS took' '%3.3i:%2.2i' % ( int((time.time() - s_t_3) / 60), int(numpy.mod((time.time() - s_t_3), 60))), 'Min:Sec')                
+        # s_t_3 = time.time()
+        # reconstructed_obs = scipy.linalg.blas.dgemm(alpha=1.0, a=sA.T, b=numpy.array(solution[0])[:,numpy.newaxis].T, trans_b=True) + bias_per_obs
+        # print('SPBLAS.T took' '%3.3i:%2.2i' % ( int((time.time() - s_t_3) / 60), int(numpy.mod((time.time() - s_t_3), 60))), 'Min:Sec')                
         # reconstructed_obs = numpy.dot(sA,solution[0]) + bias_per_obs
         # add bias back?
         tmp_return = {}
         tmp_return['solution'] = solution
         tmp_return['emissions'] = emissions
-        tmp_return['reconstructed_obs'] = reconstructed_obs
-        tmp_return['df_obs'] = df_obs
+        tmp_return['gpd'] = gp_sources
+        # tmp_return['reconstructed_obs'] = reconstructed_obs
+        # tmp_return['df_obs'] = df_obs
         print('Loop took' '%3.3i:%2.2i' % ( int((time.time() - s_t_0) / 60), int(numpy.mod((time.time() - s_t_0), 60))), 'Min:Sec')                
 
         # 3. Clip to actual region and add a data frame column with each cell's size
