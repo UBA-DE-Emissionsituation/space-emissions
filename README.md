@@ -5,3 +5,7 @@ Measuring NOx concentration from space is relatively easy. The pollutant's lifet
 # Tool
 
 We aim at creating and then freely offering a software tool here. The program allows for emissions inventory estimates to be compared with independently derived calculations based on satellite data. Please refer to the repository's [wiki](https://github.com/UBA-DE-Emissionsituation/space-emissions/wiki) for all the details.
+
+# Installation
+
+Please read the instructions in the INSTALL.md file for a detailed setup guide of your Python environment.
