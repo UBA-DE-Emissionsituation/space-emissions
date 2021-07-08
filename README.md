@@ -8,4 +8,4 @@ We aim at creating and then freely offering a software tool here. The program al
 
 # Installation
 
-Please refer to the INSTALL.md for a detailed setup guide of your Python environment.
+Please read the instructions in the INSTALL.md file for a detailed setup guide of your Python environment.
